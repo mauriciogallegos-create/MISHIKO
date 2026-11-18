@@ -1,0 +1,32 @@
+# Maven
+backend/target/
+**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE & Editors
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+logs/
+temp/
+tmp/
+
+# OS files
+Desktop.ini
+$RECYCLE.BIN/
