@@ -30,7 +30,7 @@ function initMichi3D(canvasId = 'michi-canvas') {
   // Cargar Three.js dinámicamente si no está cargado
   if (typeof THREE === 'undefined') {
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js';
     script.onload = () => buildMichiScene(canvas);
     document.head.appendChild(script);
   } else {
