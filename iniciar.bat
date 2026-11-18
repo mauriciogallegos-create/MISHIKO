@@ -27,6 +27,9 @@ if errorlevel 1 (
     "C:\xampp\mysql\bin\mysql" -u root mishiko_db < "database\mishiko_schema.sql" 2>nul
     echo    Cargando datos iniciales...
     "C:\xampp\mysql\bin\mysql" -u root mishiko_db < "database\mishiko_data.sql" 2>nul
+    echo    Aplicando alineacion JPA y constraint de idempotencia...
+    "C:\xampp\mysql\bin\mysql" -u root mishiko_db < "database\mishiko_jpa_alignment.sql" 2>nul
+    "C:\xampp\mysql\bin\mysql" -u root mishiko_db < "database\mishiko_pedido_idempotencia.sql" 2>nul
     echo    Base de datos: OK
 )
 
