@@ -137,8 +137,8 @@
         <div class="prod-cocina-item">
           <div class="prod-cant">${d.cantidad}</div>
           <div>
-            <div class="prod-nombre">${d.productoNombre}</div>
-            ${d.observaciones ? `<div class="prod-obs">⚠ ${d.observaciones}</div>` : ''}
+            <div class="prod-nombre">${escaparHtml(d.productoNombre)}</div>
+            ${d.observaciones ? `<div class="prod-obs">⚠ ${escaparHtml(d.observaciones)}</div>` : ''}
           </div>
         </div>`).join('');
 
@@ -155,7 +155,7 @@
             <div class="card-tiempo ${minutos > 20 ? 'urgente' : ''}">⏱ ${minutos}min</div>
           </div>
           <div class="card-productos">${productos}</div>
-          ${p.observaciones ? `<div class="card-obs">📝 ${p.observaciones}</div>` : ''}
+          ${p.observaciones ? `<div class="card-obs">📝 ${escaparHtml(p.observaciones)}</div>` : ''}
           <div class="card-acciones">${acciones}</div>
         </div>`;
     }

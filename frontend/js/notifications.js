@@ -56,7 +56,11 @@ const Notifications = {
     const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
     const toast = document.createElement('div');
     toast.className = `toast toast-${tipo}`;
-    toast.innerHTML = `<span>${icons[tipo] || 'ℹ️'}</span><span>${mensaje}</span>`;
+    const icono = document.createElement('span');
+    icono.textContent = icons[tipo] || 'ℹ️';
+    const texto = document.createElement('span');
+    texto.textContent = mensaje;
+    toast.append(icono, texto);
     container.appendChild(toast);
 
     setTimeout(() => {

@@ -5,6 +5,11 @@
 
 const API_BASE = 'http://localhost:8080/api';
 
+function escaparHtml(valor) {
+  const entidades = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(valor ?? '').replace(/[&<>"']/g, caracter => entidades[caracter]);
+}
+
 const api = {
   /**
    * Realiza una petición HTTP

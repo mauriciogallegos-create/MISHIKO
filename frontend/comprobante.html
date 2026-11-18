@@ -169,7 +169,7 @@
         const tbody = document.getElementById('comp-productos');
         tbody.innerHTML = (pedido.detalles || []).map(d => `
           <tr>
-            <td>${d.productoNombre}${d.observaciones ? `<br><small style="color:var(--text-muted)">${d.observaciones}</small>` : ''}</td>
+            <td>${escaparHtml(d.productoNombre)}${d.observaciones ? `<br><small style="color:var(--text-muted)">${escaparHtml(d.observaciones)}</small>` : ''}</td>
             <td style="text-align:center">${d.cantidad}</td>
             <td style="text-align:right">S/ ${parseFloat(d.precioUnitario).toFixed(2)}</td>
             <td style="text-align:right">S/ ${parseFloat(d.subtotal).toFixed(2)}</td>
@@ -185,7 +185,7 @@
         document.getElementById('comp-contenido').style.display = 'block';
       } catch (err) {
         document.getElementById('loading-comp').innerHTML =
-          `<p style="color:var(--error)">⚠ No se pudo cargar el comprobante: ${err.message}</p>`;
+          `<p style="color:var(--error)">⚠ No se pudo cargar el comprobante: ${escaparHtml(err.message)}</p>`;
       }
     }
 
