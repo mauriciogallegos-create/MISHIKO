@@ -28,12 +28,44 @@ public class AdminProductoController {
 
     private final ProductoUseCase productoUseCase;
 
-    public record CrearCategoria(@NotNull Long restauranteId, @NotBlank @Size(max = 100) String nombre) {}
+    public record CrearCategoria(
+            @NotNull Long restauranteId,
+            @NotBlank @Size(max = 100) String nombre,
+            String descripcion,
+            Integer ordenDisplay) {}
+
+    @GetMapping("/categorias")
+    public ResponseEntity<List<CategoriaResponse>> getCategorias(
+            @RequestParam(defaultValue = "1") Long restauranteId) {
+        return ResponseEntity.ok(productoUseCase.getAllCategoriasAdmin(restauranteId));
+    }
 
     @PostMapping("/categorias")
     public ResponseEntity<CategoriaResponse> crearCategoria(@Valid @RequestBody CrearCategoria request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(productoUseCase.crearCategoria(request.restauranteId(), request.nombre()));
+                .body(productoUseCase.crearCategoria(
+                        request.restauranteId(),
+                        request.nombre(),
+                        request.descripcion(),
+                        request.ordenDisplay()));
+    }
+
+    @PutMapping("/categorias/{id}")
+    public ResponseEntity<CategoriaResponse> actualizarCategoria(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(productoUseCase.actualizarCategoria(id, body));
+    }
+
+    @PatchMapping("/categorias/{id}/toggle")
+    public ResponseEntity<CategoriaResponse> toggleCategoria(@PathVariable Long id) {
+        return ResponseEntity.ok(productoUseCase.toggleActivaCategoria(id));
+    }
+
+    @DeleteMapping("/categorias/{id}")
+    public ResponseEntity<Void> eliminarCategoria(@PathVariable Long id) {
+        productoUseCase.eliminarCategoria(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/productos")

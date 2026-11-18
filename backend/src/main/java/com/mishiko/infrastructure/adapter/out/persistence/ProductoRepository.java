@@ -18,4 +18,8 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findByRestauranteId(Long restauranteId);
 
     List<Producto> findByRestauranteIdAndCategoriaActivaTrueOrderByOrdenDisplayAscIdAsc(Long restauranteId);
+
+    boolean existsByCategoriaId(Long categoriaId);
+
+    long countByCategoriaId(Long categoriaId);
 }

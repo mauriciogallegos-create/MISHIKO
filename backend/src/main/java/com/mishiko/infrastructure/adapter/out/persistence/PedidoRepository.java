@@ -31,4 +31,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     Optional<Pedido> buscarParaActualizarEstado(@Param("id") Long id);
 
     Optional<Pedido> findByMesaIdAndSolicitudId(Long mesaId, String solicitudId);
+
+    boolean existsByMesaId(Long mesaId);
 }

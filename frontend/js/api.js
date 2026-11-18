@@ -73,6 +73,7 @@ const api = {
   get(url, auth = false)             { return this.request('GET',    url, null, auth); },
   post(url, data, auth = false)      { return this.request('POST',   url, data, auth); },
   put(url, data, auth = false)       { return this.request('PUT',    url, data, auth); },
+  patch(url, data = null, auth = false) { return this.request('PATCH', url, data, auth); },
   delete(url, auth = false)          { return this.request('DELETE', url, null, auth); },
 
   /** Descarga un archivo (PDF) */

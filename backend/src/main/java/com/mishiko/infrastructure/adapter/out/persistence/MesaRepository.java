@@ -16,7 +16,13 @@ public interface MesaRepository extends JpaRepository<Mesa, Long> {
 
     List<Mesa> findByRestauranteId(Long restauranteId);
 
+    List<Mesa> findByRestauranteIdOrderByNumeroAsc(Long restauranteId);
+
     Optional<Mesa> findByRestauranteIdAndNumero(Long restauranteId, Integer numero);
+
+    boolean existsByRestauranteIdAndNumero(Long restauranteId, Integer numero);
+
+    boolean existsByRestauranteIdAndNumeroAndIdNot(Long restauranteId, Integer numero, Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM Mesa m WHERE m.id = :id")

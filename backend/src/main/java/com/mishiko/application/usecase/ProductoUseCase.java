@@ -117,15 +117,79 @@ public class ProductoUseCase {
                 .stream().map(this::toProductoResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<CategoriaResponse> getAllCategoriasAdmin(Long restauranteId) {
+        return categoriaRepository.findByRestauranteIdOrderByOrdenDisplayAscIdAsc(restauranteId)
+                .stream()
+                .map(this::toCategoriaResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public CategoriaResponse crearCategoria(Long restauranteId, String nombre) {
+        return crearCategoria(restauranteId, nombre, null, 0);
+    }
+
+    @Transactional
+    public CategoriaResponse crearCategoria(Long restauranteId, String nombre, String descripcion, Integer ordenDisplay) {
         Restaurante restaurante = getRestauranteActivo(restauranteId);
         String nombreCategoria = nombre.trim();
         if (categoriaRepository.existsByRestauranteIdAndNombreIgnoreCase(restauranteId, nombreCategoria)) {
             throw new BadRequestException("Ya existe una categoría con este nombre");
         }
-        Categoria categoria = Categoria.builder().nombre(nombreCategoria).restaurante(restaurante).build();
+        Categoria categoria = Categoria.builder()
+                .nombre(nombreCategoria)
+                .descripcion(descripcion != null ? descripcion.trim() : null)
+                .ordenDisplay(ordenDisplay != null ? ordenDisplay : 0)
+                .activa(true)
+                .restaurante(restaurante)
+                .build();
         return toCategoriaResponse(categoriaRepository.save(categoria));
+    }
+
+    @Transactional
+    public CategoriaResponse actualizarCategoria(Long id, Map<String, Object> body) {
+        Categoria cat = categoriaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Categoría", id));
+
+        if (body.containsKey("nombre")) {
+            String nuevoNombre = body.get("nombre").toString().trim();
+            if (categoriaRepository.existsByRestauranteIdAndNombreIgnoreCaseAndIdNot(
+                    cat.getRestaurante().getId(), nuevoNombre, id)) {
+                throw new BadRequestException("Ya existe otra categoría con el nombre '" + nuevoNombre + "'");
+            }
+            cat.setNombre(nuevoNombre);
+        }
+        if (body.containsKey("descripcion")) {
+            cat.setDescripcion(body.get("descripcion") != null ? body.get("descripcion").toString().trim() : null);
+        }
+        if (body.containsKey("ordenDisplay")) {
+            cat.setOrdenDisplay(Integer.parseInt(body.get("ordenDisplay").toString()));
+        }
+        if (body.containsKey("activa")) {
+            cat.setActiva(Boolean.parseBoolean(body.get("activa").toString()));
+        }
+
+        return toCategoriaResponse(categoriaRepository.save(cat));
+    }
+
+    @Transactional
+    public CategoriaResponse toggleActivaCategoria(Long id) {
+        Categoria cat = categoriaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Categoría", id));
+        cat.setActiva(!Boolean.TRUE.equals(cat.getActiva()));
+        return toCategoriaResponse(categoriaRepository.save(cat));
+    }
+
+    @Transactional
+    public void eliminarCategoria(Long id) {
+        if (!categoriaRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Categoría", id);
+        }
+        if (productoRepository.existsByCategoriaId(id)) {
+            throw new BadRequestException("No se puede eliminar la categoría porque tiene productos asociados. Desactívala o reasigna los productos primero.");
+        }
+        categoriaRepository.deleteById(id);
     }
 
     @Transactional
