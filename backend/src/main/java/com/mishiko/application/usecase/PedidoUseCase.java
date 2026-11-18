@@ -17,6 +17,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +35,10 @@ public class PedidoUseCase {
     public PedidoResponse crearPedido(CrearPedidoRequest request) {
         Mesa mesa = mesaRepository.findById(request.getMesaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Mesa", request.getMesaId()));
+
+        if (!mesa.getDisponible() || !mesa.getRestaurante().getId().equals(request.getRestauranteId())) {
+            throw new BadRequestException("La mesa no está disponible para este restaurante");
+        }
 
         // Generar número de pedido
         String numeroPedido = generarNumeroPedido();
@@ -54,6 +59,9 @@ public class PedidoUseCase {
             Producto producto = productoRepository.findById(item.getProductoId())
                     .orElseThrow(() -> new ResourceNotFoundException("Producto", item.getProductoId()));
 
+            if (!producto.getRestaurante().getId().equals(request.getRestauranteId())) {
+                throw new BadRequestException("El producto no pertenece al restaurante del pedido");
+            }
             if (!producto.getDisponible()) {
                 throw new BadRequestException("El producto '" + producto.getNombre() + "' no está disponible");
             }
@@ -111,17 +119,23 @@ public class PedidoUseCase {
 
     @Transactional
     public PedidoResponse actualizarEstado(Long id, ActualizarEstadoRequest request, String emailUsuario) {
-        Pedido pedido = pedidoRepository.findById(id)
+        Pedido pedido = pedidoRepository.buscarParaActualizarEstado(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Pedido", id));
 
         EstadoPedidoEnum nuevoEstado;
         try {
-            nuevoEstado = EstadoPedidoEnum.valueOf(request.getEstado().toUpperCase());
+            nuevoEstado = EstadoPedidoEnum.valueOf(request.getEstado().trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Estado inválido: " + request.getEstado());
         }
 
         EstadoPedidoEnum estadoAnterior = pedido.getEstado();
+        if (estadoAnterior == nuevoEstado) {
+            return toPedidoResponse(pedido);
+        }
+        if (!estadoAnterior.permiteTransicionA(nuevoEstado)) {
+            throw new BadRequestException("El pedido no puede pasar de " + estadoAnterior + " a " + nuevoEstado);
+        }
         pedido.setEstado(nuevoEstado);
 
         Usuario usuario = usuarioRepository.findByEmail(emailUsuario).orElse(null);
