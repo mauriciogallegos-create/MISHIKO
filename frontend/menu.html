@@ -39,6 +39,19 @@
       <input type="text" id="input-busqueda" placeholder="Buscar platillos..." oninput="buscarProductos(this.value)">
     </div>
 
+    <details class="michi-comandos">
+      <summary>🐱 Consultar a Michi</summary>
+      <form id="form-michi">
+        <label for="texto-reconocido">Escribe o dicta tu consulta</label>
+        <input id="texto-reconocido" class="form-control" maxlength="240" placeholder="Quiero dos limonadas">
+        <div class="michi-comandos-acciones">
+          <button type="submit" class="btn btn-primary">Enviar a Michi</button>
+          <button type="button" id="btn-mic" class="btn btn-secondary">🎤 Hablar con Michi</button>
+        </div>
+      </form>
+      <p id="michi-respuesta" role="status"></p>
+    </details>
+
     <!-- Filtros de Categorías -->
     <div class="categorias-scroll" id="categorias-container">
       <button class="categoria-chip active" onclick="filtrarCategoria(0, this)">Todos</button>
@@ -154,6 +167,7 @@
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/cart.js"></script>
+  <script src="js/notifications.js"></script>
   <script src="js/menu.js"></script>
   <script src="js/michi.js"></script>
 </body>

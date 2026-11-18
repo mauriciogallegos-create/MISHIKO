@@ -374,3 +374,28 @@
 @media (max-width: 400px) {
   .productos-grid { grid-template-columns: 1fr; }
 }
+
+
+.michi-comandos {
+  margin: .75rem 0 1rem;
+}
+
+.michi-comandos summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.michi-comandos form {
+  margin-top: .75rem;
+}
+
+.michi-comandos-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .5rem;
+}
+
+#michi-respuesta {
+  margin-top: .5rem;
+}

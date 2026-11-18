@@ -243,6 +243,8 @@ if (vozSynth) {
  * @param {string} texto
  */
 function michiHabla(texto, forzar = false) {
+  const respuesta = document.getElementById('michi-respuesta');
+  if (respuesta) respuesta.textContent = texto;
   // Mostrar burbuja con el texto
   const burbuja = document.getElementById('michi-burbuja');
   const msgEl   = document.getElementById('michi-msg');
@@ -299,7 +301,7 @@ function iniciarReconocimiento(onResult) {
 
   reconocimiento.onstart = () => {
     micActivo = true;
-    michiHabla('Te escucho... 🎤');
+    vozSynth?.cancel();
     actualizarBtnMic(true);
   };
 
@@ -310,7 +312,8 @@ function iniciarReconocimiento(onResult) {
 
     // Mostrar texto reconocido
     const textoEl = document.getElementById('texto-reconocido');
-    if (textoEl) textoEl.textContent = transcript;
+    if (textoEl instanceof HTMLInputElement) textoEl.value = transcript;
+    else if (textoEl) textoEl.textContent = transcript;
 
     if (event.results[0].isFinal && onResult) {
       onResult(transcript.toLowerCase());
@@ -347,98 +350,98 @@ function actualizarBtnMic(activo) {
   btn.style.background = activo ? 'var(--error)' : 'var(--primary)';
 }
 
-/**
- * Procesar instrucción de voz del cliente para el menú
- * @param {string} instruccion - Texto reconocido en minúsculas
- */
-function procesarInstruccionVoz(instruccion) {
-  if (!instruccion) return;
+function normalizarConsulta(texto) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
 
-  // ── Agregar producto ────────────────────────────────────
-  const matchAgregar = instruccion.match(/(?:quiero|agrega|dame|pon)\s+(.+)/);
-  if (matchAgregar && typeof todosProductos !== 'undefined') {
-    const termino = matchAgregar[1];
-    const cantidadMatch = termino.match(/^(\w+)\s+(.+)/);
-    let cantidad = 1;
-    let nombreProducto = termino;
+function coincidenciasMichi(texto, productos) {
+  const palabras = nombre => normalizarConsulta(nombre).split(' ')
+    .filter(p => p && !['el', 'la', 'los', 'las'].includes(p))
+    .map(p => /[aeiou]s$/.test(p) ? p.slice(0, -1) : p);
+  const consulta = palabras(texto);
+  if (consulta.length === 0) return [];
+  const exactos = productos.filter(p => palabras(p.nombre).join(' ') === consulta.join(' '));
+  return exactos.length ? exactos : productos.filter(p => {
+    const nombre = palabras(p.nombre);
+    return consulta.every(palabra => nombre.includes(palabra));
+  });
+}
 
-    if (cantidadMatch) {
-      const numPalabras = { uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5 };
-      const numParsed = parseInt(cantidadMatch[1]) || numPalabras[cantidadMatch[1]] || null;
-      if (numParsed) { cantidad = numParsed; nombreProducto = cantidadMatch[2]; }
-    }
-
-    const producto = todosProductos.find(p =>
-      p.nombre.toLowerCase().includes(nombreProducto.trim()) ||
-      nombreProducto.trim().includes(p.nombre.toLowerCase())
-    );
-
-    if (producto) {
-      if (!producto.disponible) {
-        michiHabla(`Lo siento, ${producto.nombre} está agotado en este momento.`);
-        return;
+async function procesarInstruccionVoz(instruccion) {
+  const texto = normalizarConsulta(instruccion).replace(/^michi\s+/, '');
+  if (!texto) return;
+  const agregar = texto.match(/^(?:quiero|agrega|dame|pon)\s+(.+)/);
+  if (agregar) {
+    const numeros = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+    const segmentos = agregar[1].split(/\s+y\s+(?=(?:un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s)/);
+    const pedido = [];
+    for (const segmento of segmentos) {
+      const [primera, ...resto] = segmento.split(' ');
+      const tieneCantidad = /^\d+$/.test(primera) || Object.hasOwn(numeros, primera);
+      const cantidad = tieneCantidad ? (numeros[primera] ?? Number(primera)) : 1;
+      const producto = tieneCantidad ? resto.join(' ') : segmento;
+      const opciones = coincidenciasMichi(producto, todosProductos);
+      if (!Number.isSafeInteger(cantidad) || cantidad < 1 || cantidad > 99) {
+        return michiHabla('Indica una cantidad entre 1 y 99 por producto.');
       }
-      for (let i = 0; i < cantidad; i++) agregarAlCarrito(producto);
-      michiHabla(`Agregué ${cantidad} ${producto.nombre} a tu pedido 😸`);
-    } else {
-      michiHabla(`No encontré "${nombreProducto}" en el menú. ¿Puedes repetirlo?`);
+      if (opciones.length !== 1) {
+        return michiHabla(opciones.length
+          ? `Encontré ${opciones.map(p => p.nombre).join(', ')}. Indica cuál quieres.`
+          : `No encontré “${producto}” en el menú. Escribe o dicta el nombre del producto.`);
+      }
+      if (!opciones[0].disponible) return michiHabla(`${opciones[0].nombre} está agotado.`);
+      pedido.push({ producto: opciones[0], cantidad });
     }
-    return;
+    pedido.forEach(({ producto, cantidad }) => Cart.add(producto, cantidad));
+    renderCarritoItems();
+    return michiHabla('Agregué los productos al carrito. Revísalos antes de confirmar tu pedido.');
   }
 
-  // ── Eliminar producto ───────────────────────────────────
-  if (instruccion.includes('elimina') || instruccion.includes('quita') || instruccion.includes('saca')) {
-    const items = Cart.get();
-    const encontrado = items.find(i => instruccion.includes(i.nombre.toLowerCase()));
-    if (encontrado) {
-      Cart.remove(encontrado.id);
-      renderCarritoItems && renderCarritoItems();
-      michiHabla(`Quité ${encontrado.nombre} de tu pedido.`);
-    } else {
-      michiHabla('No encontré ese producto en tu carrito.');
+  const eliminar = texto.match(/^(?:elimina|quita|saca)\s+(.+)/);
+  if (eliminar) {
+    const opciones = coincidenciasMichi(eliminar[1], Cart.get());
+    if (opciones.length !== 1) return michiHabla('Indica el nombre exacto del producto en tu carrito.');
+    Cart.remove(opciones[0].id);
+    renderCarritoItems();
+    return michiHabla(`Quité ${opciones[0].nombre} de tu carrito.`);
+  }
+
+  const precio = texto.match(/(?:cuanto cuesta|precio de)\s+(.+)/);
+  if (precio) {
+    const opciones = coincidenciasMichi(precio[1], todosProductos);
+    return michiHabla(opciones.length === 1
+      ? `${opciones[0].nombre} cuesta ${Cart.fmt(opciones[0].precio)}.`
+      : 'Indica el nombre exacto del producto para consultar su precio.');
+  }
+
+  if (texto.includes('estado') && texto.includes('pedido')) {
+    if (!pedidoConfirmadoId) return michiHabla('Consulta tu número de pedido en la página de seguimiento.');
+    try {
+      const pedido = await api.get(`/pedidos/${pedidoConfirmadoId}`);
+      return michiHabla(`El pedido ${pedido.numeroPedido} está ${pedido.estado.toLowerCase().replaceAll('_', ' ')}.`);
+    } catch (error) {
+      return michiHabla('No pude consultar el estado. Vuelve a intentarlo.');
     }
-    return;
   }
 
-  // ── Consultas ───────────────────────────────────────────
-  if (instruccion.includes('total') || instruccion.includes('cuánto es')) {
-    const total = typeof Cart !== 'undefined' ? Cart.fmt(Cart.total()) : '0';
-    michiHabla(`El total de tu pedido es ${total} incluyendo IGV.`);
-    return;
+  if (texto.includes('total')) {
+    return michiHabla(`El total de tu carrito es ${Cart.fmt(Cart.total())} con IGV.`);
   }
 
-  if (instruccion.includes('carrito') || instruccion.includes('pedido')) {
-    const items = Cart.get();
-    if (items.length === 0) {
-      michiHabla('Tu carrito está vacío. ¡Elige algo del menú!');
-    } else {
-      const resumen = items.map(i => `${i.cantidad} ${i.nombre}`).join(', ');
-      michiHabla(`En tu carrito tienes: ${resumen}.`);
-    }
-    return;
+  if (texto.includes('carrito')) {
+    if (!document.getElementById('panel-carrito').classList.contains('open')) toggleCarrito();
+    return michiHabla(Cart.count() ? 'Aquí tienes tu carrito.' : 'Tu carrito está vacío.');
   }
 
-  if (instruccion.includes('postres') || instruccion.includes('bebidas') ||
-      instruccion.includes('platos') || instruccion.includes('entradas')) {
-    michiHabla('¡Claro! Mira las categorías en la parte superior del menú 👆');
-    return;
+  const categoria = Array.from(document.querySelectorAll('.categoria-chip'))
+    .find(chip => texto.endsWith(normalizarConsulta(chip.textContent)));
+  if (categoria) {
+    categoria.click();
+    return michiHabla(`Mostrando ${categoria.textContent}.`);
   }
 
-  // Precio de un producto
-  const matchPrecio = instruccion.match(/(?:cuánto cuesta|precio de)\s+(.+)/);
-  if (matchPrecio && typeof todosProductos !== 'undefined') {
-    const nombre = matchPrecio[1].trim();
-    const producto = todosProductos.find(p => p.nombre.toLowerCase().includes(nombre));
-    if (producto) {
-      michiHabla(`${producto.nombre} cuesta ${Cart.fmt(producto.precio)}.`);
-    } else {
-      michiHabla(`No encontré ese producto. ¿Puedes ser más específico?`);
-    }
-    return;
-  }
-
-  // Fallback
-  michiHabla('No entendí bien. Puedes decir: "Quiero dos hamburguesas", "¿Cuánto es el total?" o "Elimina las papas".');
+  michiHabla('Prueba con “quiero dos limonadas”, “muéstrame mi carrito” o “¿cuánto cuesta la limonada?”.');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -446,6 +449,12 @@ function procesarInstruccionVoz(instruccion) {
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   initMichi3D('michi-canvas');
+
+  const formMichi = document.getElementById('form-michi');
+  formMichi?.addEventListener('submit', event => {
+    event.preventDefault();
+    procesarInstruccionVoz(document.getElementById('texto-reconocido').value);
+  });
 
   // Botón de micrófono si existe
   const btnMic = document.getElementById('btn-mic');
