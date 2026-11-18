@@ -27,6 +27,10 @@ Thumbs.db
 logs/
 temp/
 tmp/
+backend/data/
+**/data/*.db
+*.mv.db
+*.trace.db
 
 # OS files
 Desktop.ini

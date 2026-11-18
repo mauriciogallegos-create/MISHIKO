@@ -52,11 +52,12 @@ public class SecurityConfig {
         http
             .cors(Customizer.withDefaults())
             .csrf(AbstractHttpConfigurer::disable)
+            .headers(headers -> headers.frameOptions(org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig::disable))
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/auth/**", "/h2-console/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/*.html", "/admin/*.html", "/cocina/*.html", "/mascota/*.html", "/css/**", "/js/**", "/assets/**", "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/menu/**", "/mesas", "/mesas/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/productos/**").permitAll()
