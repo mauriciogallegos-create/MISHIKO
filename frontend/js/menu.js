@@ -43,7 +43,7 @@ async function cargarMenu() {
     if (restaurante?.logoUrl) {
       logo.onload = () => { logo.hidden = false; };
       logo.onerror = () => { logo.hidden = true; };
-      logo.src = restaurante.logoUrl;
+      logo.src = urlImagenMishiko(restaurante.logoUrl);
     }
 
     todosProductos = data.productos || [];
@@ -100,7 +100,7 @@ function renderProductos(productos) {
 function crearProductoCard(p) {
   const agotado = !p.disponible;
   const imgHtml = p.imagenUrl
-    ? `<img src="${escaparHtml(p.imagenUrl)}" alt="${escaparHtml(p.nombre)}" onerror="this.parentElement.innerHTML='🍽'">`
+    ? `<img src="${escaparHtml(urlImagenMishiko(p.imagenUrl))}" alt="${escaparHtml(p.nombre)}" onerror="this.parentElement.innerHTML='🍽'">`
     : '🍽';
   const precioFmt = 'S/ ' + parseFloat(p.precio).toFixed(2);
 

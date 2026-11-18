@@ -50,8 +50,8 @@
 </div>
 
 <!-- Modal Producto -->
-<div id="modal-producto" class="modal" style="display:none">
-  <div class="modal-content" style="max-width:580px">
+<div id="modal-producto" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:580px">
     <div class="modal-header">
       <h3 id="modal-titulo">Nuevo Producto</h3>
       <button class="btn-cerrar" onclick="cerrarModal()">✕</button>
@@ -68,6 +68,7 @@
           <select id="prod-categoria" class="form-control">
             <option value="">Seleccionar...</option>
           </select>
+          <button type="button" class="btn btn-secondary" onclick="abrirModalCategoria()">Nueva categoría</button>
         </div>
       </div>
       <div class="form-group">
@@ -82,6 +83,9 @@
         <div class="form-group">
           <label class="form-label">URL de Imagen</label>
           <input type="text" id="prod-imagen" class="form-control" placeholder="https://..." oninput="previsualizarImg()">
+          <label for="prod-archivo">Foto PNG o JPEG (máx. 5 MB)</label>
+          <input type="file" id="prod-archivo" accept="image/png,image/jpeg">
+          <button type="button" id="btn-subir-imagen" class="btn btn-secondary" onclick="subirImagen()">Subir foto</button>
         </div>
       </div>
       <div class="form-group">
@@ -104,9 +108,23 @@
   </div>
 </div>
 
+<div id="modal-categoria" class="modal-overlay" style="display:none">
+  <form id="form-categoria" class="modal">
+    <div class="modal-header"><h3>Nueva categoría</h3></div>
+    <div class="modal-body">
+      <label for="categoria-nombre">Nombre de la categoría</label>
+      <input id="categoria-nombre" class="form-control" maxlength="100" required>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="cerrarModalCategoria()">Cancelar</button>
+      <button type="submit" id="btn-guardar-categoria" class="btn btn-primary">Guardar categoría</button>
+    </div>
+  </form>
+</div>
+
 <!-- Modal Confirmar Eliminar -->
-<div id="modal-eliminar" class="modal" style="display:none">
-  <div class="modal-content" style="max-width:380px">
+<div id="modal-eliminar" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:380px">
     <div class="modal-body" style="text-align:center;padding:2rem">
       <div style="font-size:2.5rem;margin-bottom:1rem">🗑️</div>
       <h3>¿Eliminar producto?</h3>
@@ -146,11 +164,48 @@
   function poblarSelectCategorias() {
     const selFiltro = document.getElementById('filtro-cat');
     const selForm   = document.getElementById('prod-categoria');
+    const filtroActual = selFiltro.value;
+    const seleccionActual = selForm.value;
+    selFiltro.length = 1;
+    selForm.length = 1;
     categorias.forEach(c => {
       selFiltro.add(new Option(c.nombre, c.id));
       selForm.add(new Option(c.nombre, c.id));
     });
+    selFiltro.value = filtroActual;
+    selForm.value = seleccionActual;
   }
+
+  function abrirModalCategoria() {
+    document.getElementById('form-categoria').reset();
+    document.getElementById('modal-categoria').style.display = 'flex';
+    document.getElementById('categoria-nombre').focus();
+  }
+
+  function cerrarModalCategoria() {
+    document.getElementById('modal-categoria').style.display = 'none';
+  }
+
+  document.getElementById('form-categoria').addEventListener('submit', async event => {
+    event.preventDefault();
+    const nombre = document.getElementById('categoria-nombre').value.trim();
+    if (!nombre) return;
+    const boton = document.getElementById('btn-guardar-categoria');
+    boton.disabled = true;
+    try {
+      const categoria = await api.post('/admin/categorias', { nombre, restauranteId: 1 }, true);
+      if (!categoria) return;
+      categorias.push(categoria);
+      poblarSelectCategorias();
+      document.getElementById('prod-categoria').value = categoria.id;
+      cerrarModalCategoria();
+      mostrarToast('Categoría creada', 'success');
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    } finally {
+      boton.disabled = false;
+    }
+  });
 
   function filtrarProductos() {
     const q    = document.getElementById('buscar').value.toLowerCase();
@@ -170,11 +225,11 @@
     grid.innerHTML = prods.map(p => `
       <div class="prod-admin-card">
         <div class="prod-admin-img">
-          ${p.imagenUrl ? `<img src="${p.imagenUrl}" alt="${p.nombre}" onerror="this.parentElement.textContent='🍽'">` : '🍽'}
+          ${p.imagenUrl ? `<img src="${escaparHtml(urlImagenMishiko(p.imagenUrl))}" alt="${escaparHtml(p.nombre)}" onerror="this.parentElement.textContent='🍽'">` : '🍽'}
         </div>
         <div class="prod-admin-body">
-          <div class="prod-admin-cat">${p.categoriaNombre || '-'}</div>
-          <div class="prod-admin-nombre">${p.nombre}</div>
+          <div class="prod-admin-cat">${escaparHtml(p.categoriaNombre || '-')}</div>
+          <div class="prod-admin-nombre">${escaparHtml(p.nombre)}</div>
           <div class="prod-admin-precio">S/ ${parseFloat(p.precio).toFixed(2)}</div>
           <div style="font-size:0.78rem;margin-top:0.3rem">
             <span style="color:${p.disponible?'var(--success)':'var(--error)'}">● ${p.disponible?'Disponible':'No disponible'}</span>
@@ -194,6 +249,7 @@
     document.getElementById('prod-desc').value = '';
     document.getElementById('prod-precio').value = '';
     document.getElementById('prod-imagen').value = '';
+    document.getElementById('prod-archivo').value = '';
     document.getElementById('prod-categoria').value = '';
     document.getElementById('prod-disponible').checked = true;
     document.getElementById('img-preview').innerHTML = '🍽';
@@ -209,6 +265,7 @@
     document.getElementById('prod-desc').value       = p.descripcion || '';
     document.getElementById('prod-precio').value     = p.precio;
     document.getElementById('prod-imagen').value     = p.imagenUrl || '';
+    document.getElementById('prod-archivo').value = '';
     document.getElementById('prod-categoria').value  = p.categoriaId || '';
     document.getElementById('prod-disponible').checked = p.disponible;
     previsualizarImg();
@@ -218,7 +275,31 @@
   function previsualizarImg() {
     const url = document.getElementById('prod-imagen').value;
     const preview = document.getElementById('img-preview');
-    preview.innerHTML = url ? `<img src="${url}" onerror="this.parentElement.innerHTML='🍽'">` : '🍽';
+    preview.innerHTML = url ? `<img src="${escaparHtml(urlImagenMishiko(url))}" onerror="this.parentElement.textContent='🍽'">` : '🍽';
+  }
+
+  async function subirImagen() {
+    const archivo = document.getElementById('prod-archivo').files[0];
+    if (!archivo) {
+      mostrarToast('Selecciona una foto para subir.', 'warning');
+      return;
+    }
+    const boton = document.getElementById('btn-subir-imagen');
+    boton.disabled = true;
+    try {
+      const datos = new FormData();
+      datos.append('archivo', archivo);
+      const respuesta = await api.post('/admin/productos/imagen', datos, true);
+      if (respuesta?.imagenUrl) {
+        document.getElementById('prod-imagen').value = respuesta.imagenUrl;
+        previsualizarImg();
+        mostrarToast('Foto subida. Guarda el producto para asociarla.', 'success');
+      }
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    } finally {
+      boton.disabled = false;
+    }
   }
 
   async function guardarProducto() {

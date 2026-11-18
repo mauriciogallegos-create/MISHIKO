@@ -118,6 +118,17 @@ public class ProductoUseCase {
     }
 
     @Transactional
+    public CategoriaResponse crearCategoria(Long restauranteId, String nombre) {
+        Restaurante restaurante = getRestauranteActivo(restauranteId);
+        String nombreCategoria = nombre.trim();
+        if (categoriaRepository.existsByRestauranteIdAndNombreIgnoreCase(restauranteId, nombreCategoria)) {
+            throw new BadRequestException("Ya existe una categoría con este nombre");
+        }
+        Categoria categoria = Categoria.builder().nombre(nombreCategoria).restaurante(restaurante).build();
+        return toCategoriaResponse(categoriaRepository.save(categoria));
+    }
+
+    @Transactional
     public ProductoResponse crearProducto(Map<String, Object> body) {
         Long categoriaId   = Long.parseLong(body.get("categoriaId").toString());
         Long restauranteId = Long.parseLong(body.getOrDefault("restauranteId","1").toString());
@@ -127,6 +138,7 @@ public class ProductoUseCase {
         Restaurante restaurante = restauranteRepository.findById(restauranteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurante", restauranteId));
 
+        validarCategoriaRestaurante(categoria, restaurante);
         Producto p = Producto.builder()
                 .nombre(body.get("nombre").toString())
                 .descripcion(body.containsKey("descripcion") ? body.get("descripcion").toString() : null)
@@ -152,11 +164,19 @@ public class ProductoUseCase {
         if (body.containsKey("disponible"))  p.setDisponible(Boolean.parseBoolean(body.get("disponible").toString()));
         if (body.containsKey("categoriaId")) {
             Long catId = Long.parseLong(body.get("categoriaId").toString());
-            p.setCategoria(categoriaRepository.findById(catId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Categoría", catId)));
+            Categoria categoria = categoriaRepository.findById(catId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoría", catId));
+            validarCategoriaRestaurante(categoria, p.getRestaurante());
+            p.setCategoria(categoria);
         }
 
         return toProductoResponse(productoRepository.save(p));
+    }
+
+    private void validarCategoriaRestaurante(Categoria categoria, Restaurante restaurante) {
+        if (!categoria.getRestaurante().getId().equals(restaurante.getId())) {
+            throw new BadRequestException("La categoría debe pertenecer al restaurante del producto");
+        }
     }
 
     @Transactional

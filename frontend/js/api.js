@@ -7,6 +7,12 @@ const API_BASE = window.location.pathname.startsWith('/api/')
   ? `${window.location.origin}/api`
   : 'http://localhost:8080/api';
 
+function urlImagenMishiko(url) {
+  if (url?.startsWith('/uploads/')) return API_BASE + url;
+  if (url?.startsWith('/assets/') && window.location.pathname.startsWith('/api/')) return API_BASE + url;
+  return url;
+}
+
 function escaparHtml(valor) {
   const entidades = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   return String(valor ?? '').replace(/[&<>"']/g, caracter => entidades[caracter]);
@@ -21,7 +27,8 @@ const api = {
    * @param {boolean} auth - Si debe incluir el JWT
    */
   async request(method, url, data = null, auth = false) {
-    const headers = { 'Content-Type': 'application/json' };
+    const formulario = data instanceof FormData;
+    const headers = formulario ? {} : { 'Content-Type': 'application/json' };
 
     if (auth) {
       const token = Auth.getToken();
@@ -29,7 +36,7 @@ const api = {
     }
 
     const config = { method, headers };
-    if (data) config.body = JSON.stringify(data);
+    if (data) config.body = formulario ? data : JSON.stringify(data);
 
     try {
       const response = await fetch(API_BASE + url, config);
