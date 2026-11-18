@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISHIKO – Menú Digital</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/mishiko.css">
+  <link rel="stylesheet" href="css/menu.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="logo-icon">🐱</span>
+      <span class="logo-text">MISHIKO</span>
+    </div>
+    <div class="navbar-info">
+      <span id="mesa-badge" class="mesa-badge">Mesa <strong id="mesa-num">-</strong></span>
+      <button class="btn-carrito" id="btn-abrir-carrito" onclick="toggleCarrito()">
+        🛒 <span id="carrito-count" class="badge">0</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Restaurante Header -->
+  <div class="restaurante-header" id="restaurante-header">
+    <div class="restaurante-info">
+      <h1 id="restaurante-nombre">Cargando...</h1>
+      <p id="restaurante-desc" class="restaurante-desc"></p>
+    </div>
+  </div>
+
+  <!-- Búsqueda -->
+  <div class="container">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="input-busqueda" placeholder="Buscar platillos..." oninput="buscarProductos(this.value)">
+    </div>
+
+    <!-- Filtros de Categorías -->
+    <div class="categorias-scroll" id="categorias-container">
+      <button class="categoria-chip active" onclick="filtrarCategoria(0, this)">Todos</button>
+    </div>
+
+    <!-- Grid de Productos -->
+    <div id="loading-menu" class="loading-container">
+      <div class="spinner"></div>
+      <p>Cargando menú...</p>
+    </div>
+    <div id="productos-grid" class="productos-grid" style="display:none"></div>
+    <div id="no-resultados" class="no-resultados" style="display:none">
+      <p>😿 No encontramos productos con ese nombre.</p>
+    </div>
+  </div>
+
+  <!-- Panel del Carrito (Drawer) -->
+  <div id="overlay-carrito" class="overlay" onclick="toggleCarrito()"></div>
+  <div id="panel-carrito" class="carrito-panel">
+    <div class="carrito-header">
+      <h3>🛒 Tu pedido</h3>
+      <button class="btn-cerrar" onclick="toggleCarrito()">✕</button>
+    </div>
+
+    <div class="carrito-info-cliente">
+      <label>Tu nombre (opcional)</label>
+      <input type="text" id="nombre-cliente" placeholder="¿Cómo te llamamos?" class="input-nombre">
+    </div>
+
+    <div id="carrito-items" class="carrito-items">
+      <div class="carrito-vacio">
+        <span>😺</span>
+        <p>Tu carrito está vacío</p>
+        <small>¡Añade algo delicioso!</small>
+      </div>
+    </div>
+
+    <div id="carrito-totales" class="carrito-totales" style="display:none">
+      <div class="total-row"><span>Subtotal:</span><span id="subtotal">S/ 0.00</span></div>
+      <div class="total-row"><span>IGV (18%):</span><span id="igv">S/ 0.00</span></div>
+      <div class="total-row total-final"><span>Total:</span><span id="total">S/ 0.00</span></div>
+    </div>
+
+    <div class="carrito-acciones">
+      <button class="btn btn-primary btn-full" onclick="abrirRevision()" id="btn-revisar" disabled>
+        Revisar pedido →
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal de Revisión -->
+  <div id="modal-revision" class="modal" style="display:none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📋 Revisión del Pedido</h3>
+        <button class="btn-cerrar" onclick="cerrarModal('modal-revision')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="revision-mesa">🪑 Mesa <strong id="rev-mesa">-</strong></div>
+        <div id="rev-lista" class="revision-lista"></div>
+        <div class="revision-obs">
+          <label>Observaciones generales (opcional)</label>
+          <textarea id="obs-general" placeholder="Alergias, preferencias..." rows="2"></textarea>
+        </div>
+        <div class="revision-totales">
+          <div class="total-row"><span>Subtotal:</span><span id="rev-subtotal">S/ 0.00</span></div>
+          <div class="total-row"><span>IGV (18%):</span><span id="rev-igv">S/ 0.00</span></div>
+          <div class="total-row total-final"><span>Total:</span><span id="rev-total">S/ 0.00</span></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-revision')">Volver</button>
+        <button class="btn btn-primary" onclick="confirmarPedido()" id="btn-confirmar">
+          ✅ Confirmar Pedido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmación -->
+  <div id="modal-confirmacion" class="modal" style="display:none">
+    <div class="modal-content modal-success">
+      <div class="modal-body text-center">
+        <div class="success-icon">🎉</div>
+        <h3>¡Pedido Confirmado!</h3>
+        <p>Tu pedido fue enviado a cocina.</p>
+        <div class="numero-pedido-box">
+          <small>Número de Pedido</small>
+          <strong id="conf-numero">PED000001</strong>
+        </div>
+        <p class="mt-sm">Guarda este número para seguir el estado.</p>
+        <div class="conf-acciones">
+          <a id="btn-seguimiento" href="#" class="btn btn-secondary">📍 Seguir pedido</a>
+          <a id="btn-comprobante" href="#" class="btn btn-primary">📄 Ver comprobante</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Michi Flotante -->
+  <div id="michi-flotante" class="michi-flotante">
+    <div id="michi-burbuja" class="michi-burbuja" style="display:none">
+      <p id="michi-msg">¡Hola! Soy Michi, tu mesero 🐱</p>
+    </div>
+    <button class="michi-btn" onclick="toggleMichi()" title="Michi">
+      <canvas id="michi-canvas" width="80" height="80"></canvas>
+    </button>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/michi.js"></script>
+</body>
+</html>

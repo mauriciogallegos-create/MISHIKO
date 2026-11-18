@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISHIKO Admin – Gestión de Pedidos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/mishiko.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">🐱 MISHIKO Admin</div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html">📊 Dashboard</a>
+      <a href="productos.html">🍽 Productos</a>
+      <a href="categorias.html">📂 Categorías</a>
+      <a href="pedidos.html" class="active">📋 Pedidos</a>
+      <a href="mesas.html">🪑 Mesas</a>
+      <a href="../cocina/consola.html">👨‍🍳 Cocina</a>
+    </nav>
+    <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.1)">
+      <div style="font-size:0.82rem;color:rgba(255,255,255,0.6);margin-bottom:0.5rem" id="user-info">-</div>
+      <button onclick="Auth.logout()" class="btn" style="background:rgba(255,107,53,0.2);color:#FF6B35;width:100%;font-size:0.82rem">Cerrar Sesión</button>
+    </div>
+  </aside>
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <h2 style="font-size:1.1rem;font-weight:600">📋 Gestión de Pedidos</h2>
+      <button class="btn btn-primary" style="font-size:0.85rem" onclick="cargarPedidos()">🔄 Actualizar</button>
+    </div>
+    <div class="admin-content">
+      <!-- Filtros -->
+      <div class="filter-bar">
+        <input type="text" id="buscar" placeholder="🔍 Buscar N° pedido, mesa..." oninput="filtrarLocal()">
+        <select id="filtro-estado" onchange="filtrarLocal()">
+          <option value="">Todos los estados</option>
+          <option>PENDIENTE</option><option>CONFIRMADO</option>
+          <option>EN_PREPARACION</option><option>LISTO</option>
+          <option>ENTREGADO</option><option>CANCELADO</option>
+        </select>
+      </div>
+
+      <!-- Tabla -->
+      <div class="table-container">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>N° Pedido</th><th>Mesa</th><th>Cliente</th>
+              <th>Productos</th><th>Total</th><th>Estado</th>
+              <th>Hora</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="tbody-pedidos">
+              <tr><td colspan="8" style="text-align:center;padding:2rem">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cambiar estado -->
+<div id="modal-estado" class="modal" style="display:none">
+  <div class="modal-content" style="max-width:420px">
+    <div class="modal-header">
+      <h3>Cambiar Estado del Pedido</h3>
+      <button class="btn-cerrar" onclick="document.getElementById('modal-estado').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:1rem">Pedido: <strong id="me-numero" style="color:var(--primary)">-</strong></p>
+      <div class="form-group">
+        <label class="form-label">Nuevo Estado</label>
+        <select id="me-estado" class="form-control">
+          <option value="PENDIENTE">Pendiente</option>
+          <option value="CONFIRMADO">Confirmado</option>
+          <option value="EN_PREPARACION">En Preparación</option>
+          <option value="LISTO">Listo</option>
+          <option value="ENTREGADO">Entregado</option>
+          <option value="CANCELADO">Cancelado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observación (opcional)</label>
+        <input type="text" id="me-obs" class="form-control" placeholder="Motivo del cambio">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-estado').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEstado()">Guardar Cambio</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+<script src="../js/api.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/notifications.js"></script>
+<script>
+  Auth.requireAuth(['ADMIN','PERSONAL']);
+  const user = Auth.getUser();
+  if (user) document.getElementById('user-info').textContent = `${user.nombre} · ${user.rol}`;
+
+  let pedidosTodos = [];
+  let pedidoEditandoId = null;
+
+  async function cargarPedidos() {
+    try {
+      pedidosTodos = await api.get('/admin/pedidos?restauranteId=1', true);
+      filtrarLocal();
+    } catch(err) { mostrarToast('Error: ' + err.message, 'error'); }
+  }
+
+  function filtrarLocal() {
+    const q      = document.getElementById('buscar').value.toLowerCase();
+    const estado = document.getElementById('filtro-estado').value;
+    const filtrados = pedidosTodos.filter(p => {
+      const matchQ = !q || p.numeroPedido.toLowerCase().includes(q) ||
+        (p.nombreCliente||'').toLowerCase().includes(q) ||
+        String(p.mesaNumero||'').includes(q);
+      const matchE = !estado || p.estado === estado;
+      return matchQ && matchE;
+    });
+    renderTabla(filtrados);
+  }
+
+  function renderTabla(pedidos) {
+    const tbody = document.getElementById('tbody-pedidos');
+    if (!pedidos.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted)">No hay pedidos.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = pedidos.map(p => `
+      <tr>
+        <td style="font-family:monospace;font-weight:600;color:var(--primary)">${p.numeroPedido}</td>
+        <td>${p.mesaNumero ? 'Mesa '+p.mesaNumero : '-'}</td>
+        <td>${p.nombreCliente || '<span style="color:var(--text-muted)">Anónimo</span>'}</td>
+        <td>${(p.detalles||[]).length} ítem(s)</td>
+        <td style="font-weight:700">S/ ${parseFloat(p.total||0).toFixed(2)}</td>
+        <td><span class="estado-badge estado-${p.estado}">${p.estado.replace('_',' ')}</span></td>
+        <td style="font-size:0.8rem">${p.createdAt ? new Date(p.createdAt).toLocaleString('es-PE') : '-'}</td>
+        <td style="display:flex;gap:5px;flex-wrap:wrap">
+          <a href="../seguimiento.html?numero=${p.numeroPedido}" class="btn-accion btn-ver">👁 Ver</a>
+          <button class="btn-accion btn-estado" onclick="abrirModalEstado(${p.id},'${p.numeroPedido}','${p.estado}')">✏ Estado</button>
+          <a href="../comprobante.html?pedidoId=${p.id}" class="btn-accion btn-ver" style="text-decoration:none">📄</a>
+        </td>
+      </tr>`).join('');
+  }
+
+  function abrirModalEstado(id, numero, estadoActual) {
+    pedidoEditandoId = id;
+    document.getElementById('me-numero').textContent = numero;
+    document.getElementById('me-estado').value = estadoActual;
+    document.getElementById('me-obs').value = '';
+    document.getElementById('modal-estado').style.display = 'flex';
+  }
+
+  async function guardarEstado() {
+    const estado = document.getElementById('me-estado').value;
+    const obs    = document.getElementById('me-obs').value;
+    try {
+      await api.put(`/pedidos/${pedidoEditandoId}/estado`, { estado, observacion: obs }, true);
+      mostrarToast('Estado actualizado', 'success');
+      document.getElementById('modal-estado').style.display = 'none';
+      cargarPedidos();
+    } catch(err) { mostrarToast('Error: ' + err.message, 'error'); }
+  }
+
+  cargarPedidos();
+  setInterval(cargarPedidos, 20000);
+</script>
+</body>
+</html>

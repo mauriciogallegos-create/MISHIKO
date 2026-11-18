@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISHIKO – Consola de Cocina</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/mishiko.css">
+  <link rel="stylesheet" href="../css/cocina.css">
+</head>
+<body class="cocina-body">
+
+  <!-- Navbar Cocina -->
+  <nav class="cocina-nav">
+    <div class="cocina-brand">🍳 MISHIKO – Cocina</div>
+    <div style="display:flex;align-items:center;gap:1rem">
+      <div class="cocina-status">
+        <div class="cocina-dot"></div>
+        <span id="ultima-actualizacion">En línea</span>
+      </div>
+      <button onclick="cargarPedidos()" style="background:rgba(255,107,53,0.2);color:#FF6B35;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.82rem">🔄 Actualizar</button>
+      <a href="../login.html" onclick="Auth.logout()" style="color:#94A3B8;font-size:0.82rem;text-decoration:none">Salir</a>
+    </div>
+  </nav>
+
+  <!-- Toolbar -->
+  <div class="cocina-toolbar">
+    <div>
+      Mostrando: <strong id="count-mostrando">0</strong> pedidos activos
+    </div>
+    <div>Auto-actualización: <strong style="color:#48BB78">cada 15s</strong></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="cocina-tabs">
+    <button class="cocina-tab active" onclick="cambiarTab('activos', this)">
+      🕐 Activos <span id="cnt-activos" class="tab-count">0</span>
+    </button>
+    <button class="cocina-tab" onclick="cambiarTab('preparacion', this)">
+      🍳 En Preparación <span id="cnt-preparacion" class="tab-count verde">0</span>
+    </button>
+    <button class="cocina-tab" onclick="cambiarTab('listos', this)">
+      ✅ Listos <span id="cnt-listos" class="tab-count azul">0</span>
+    </button>
+  </div>
+
+  <!-- Grid de pedidos -->
+  <div class="cocina-content">
+    <div id="pedidos-grid" class="pedidos-cocina-grid">
+      <div class="sin-pedidos"><div class="spinner" style="border-top-color:#FF6B35;border-color:rgba(255,255,255,0.1)"></div><p style="margin-top:1rem">Cargando pedidos...</p></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <audio id="notif-sound" preload="auto">
+    <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJiVkI..." type="audio/wav">
+  </audio>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/notifications.js"></script>
+  <script>
+    Auth.requireAuth(['COCINA', 'ADMIN', 'PERSONAL']);
+
+    let tabActual = 'activos';
+    let todosLosPedidos = [];
+    let idsAntes = new Set();
+
+    async function cargarPedidos() {
+      try {
+        const pedidos = await api.get('/cocina/pedidos', true);
+        todosLosPedidos = pedidos;
+
+        // Detectar nuevos pedidos
+        const idsAhora = new Set(pedidos.map(p => p.id));
+        const nuevos   = [...idsAhora].filter(id => !idsAntes.has(id));
+        if (nuevos.length > 0 && idsAntes.size > 0) {
+          Notifications.show('¡Nuevo Pedido!', `Llegó ${nuevos.length} pedido(s) nuevo(s)`, 'info');
+          reproducirSonido();
+        }
+        idsAntes = idsAhora;
+
+        // Contadores
+        const activos   = pedidos.filter(p => ['PENDIENTE','CONFIRMADO'].includes(p.estado));
+        const enPrep    = pedidos.filter(p => p.estado === 'EN_PREPARACION');
+        const listos    = pedidos.filter(p => p.estado === 'LISTO');
+
+        document.getElementById('cnt-activos').textContent     = activos.length;
+        document.getElementById('cnt-preparacion').textContent = enPrep.length;
+        document.getElementById('cnt-listos').textContent      = listos.length;
+        document.getElementById('ultima-actualizacion').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-PE');
+
+        renderTab();
+      } catch (err) {
+        document.getElementById('pedidos-grid').innerHTML =
+          `<div class="sin-pedidos"><span>⚠️</span><p style="color:#FC8181">Error: ${err.message}</p></div>`;
+      }
+    }
+
+    function cambiarTab(tab, btn) {
+      tabActual = tab;
+      document.querySelectorAll('.cocina-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTab();
+    }
+
+    function renderTab() {
+      const filtros = {
+        activos:     ['PENDIENTE','CONFIRMADO'],
+        preparacion: ['EN_PREPARACION'],
+        listos:      ['LISTO']
+      };
+      const estados = filtros[tabActual] || [];
+      const pedidos = todosLosPedidos.filter(p => estados.includes(p.estado));
+      document.getElementById('count-mostrando').textContent = pedidos.length;
+      renderPedidos(pedidos);
+    }
+
+    function renderPedidos(pedidos) {
+      const grid = document.getElementById('pedidos-grid');
+      if (pedidos.length === 0) {
+        grid.innerHTML = `<div class="sin-pedidos"><span>${tabActual==='listos'?'✅':'😴'}</span><p>No hay pedidos en este estado</p></div>`;
+        return;
+      }
+      grid.innerHTML = pedidos.map(p => crearCard(p)).join('');
+    }
+
+    function crearCard(p) {
+      const minutos  = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 60000);
+      const urgente  = minutos > 20 && p.estado !== 'LISTO';
+      const clasCard = urgente ? 'urgente' : p.estado === 'EN_PREPARACION' ? 'en-prep' : p.estado === 'LISTO' ? 'listo' : '';
+
+      const productos = (p.detalles || []).map(d => `
+        <div class="prod-cocina-item">
+          <div class="prod-cant">${d.cantidad}</div>
+          <div>
+            <div class="prod-nombre">${d.productoNombre}</div>
+            ${d.observaciones ? `<div class="prod-obs">⚠ ${d.observaciones}</div>` : ''}
+          </div>
+        </div>`).join('');
+
+      const acciones = getAcciones(p);
+
+      return `
+        <div class="pedido-cocina-card ${clasCard}">
+          <div class="card-top">
+            <div>
+              <div class="card-numero">${p.numeroPedido}</div>
+              <div style="font-size:0.78rem;color:#94A3B8;margin-top:2px">${new Date(p.createdAt).toLocaleTimeString('es-PE')}</div>
+            </div>
+            <div class="card-mesa">M-${p.mesaNumero || '?'}</div>
+            <div class="card-tiempo ${minutos > 20 ? 'urgente' : ''}">⏱ ${minutos}min</div>
+          </div>
+          <div class="card-productos">${productos}</div>
+          ${p.observaciones ? `<div class="card-obs">📝 ${p.observaciones}</div>` : ''}
+          <div class="card-acciones">${acciones}</div>
+        </div>`;
+    }
+
+    function getAcciones(p) {
+      switch (p.estado) {
+        case 'PENDIENTE':
+          return `<button class="btn-cocina btn-confirmar" onclick="cambiarEstado(${p.id},'CONFIRMADO')">✅ Confirmar</button>`;
+        case 'CONFIRMADO':
+          return `<button class="btn-cocina btn-en-prep" onclick="cambiarEstado(${p.id},'EN_PREPARACION')">🍳 Iniciar Prep.</button>`;
+        case 'EN_PREPARACION':
+          return `<button class="btn-cocina btn-listo" onclick="cambiarEstado(${p.id},'LISTO')">🔔 Marcar Listo</button>`;
+        case 'LISTO':
+          return `<button class="btn-cocina btn-entregar" onclick="cambiarEstado(${p.id},'ENTREGADO')">📦 Entregado</button>`;
+        default:
+          return '';
+      }
+    }
+
+    async function cambiarEstado(pedidoId, nuevoEstado) {
+      try {
+        await api.put(`/pedidos/${pedidoId}/estado`, { estado: nuevoEstado, observacion: null }, true);
+        mostrarToast(`Estado actualizado: ${nuevoEstado.replace('_',' ')}`, 'success');
+        cargarPedidos();
+      } catch (err) {
+        mostrarToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    function reproducirSonido() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+      } catch (_) {}
+    }
+
+    // Iniciar
+    Notifications.requestPermission();
+    cargarPedidos();
+    setInterval(cargarPedidos, 15000);
+  </script>
+</body>
+</html>

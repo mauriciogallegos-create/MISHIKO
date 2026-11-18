@@ -1,0 +1,137 @@
+/* ═══════════════════════════════════════════════════════
+   MISHIKO – Estilos Consola de Cocina
+   ═══════════════════════════════════════════════════════ */
+
+body.cocina-body {
+  background: #0F172A;
+  color: #E2E8F0;
+  font-family: 'Poppins', sans-serif;
+}
+
+.cocina-nav {
+  background: #1E293B;
+  padding: 0.9rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 2px solid #FF6B35;
+  position: sticky; top: 0; z-index: 100;
+}
+.cocina-brand { font-size: 1.2rem; font-weight: 700; color: #FF6B35; }
+.cocina-status {
+  font-size: 0.82rem; color: #94A3B8;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.cocina-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #48BB78; animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.cocina-tabs {
+  display: flex; gap: 0; border-bottom: 2px solid #1E293B;
+  background: #1E293B; padding: 0 1.5rem;
+}
+.cocina-tab {
+  padding: 0.9rem 1.5rem; color: #94A3B8;
+  font-weight: 600; font-size: 0.9rem; cursor: pointer;
+  border: none; background: none; font-family: 'Poppins',sans-serif;
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.cocina-tab.active { color: #FF6B35; border-bottom-color: #FF6B35; }
+.cocina-tab:hover:not(.active) { color: #E2E8F0; }
+.tab-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; border-radius: 10px;
+  font-size: 0.72rem; font-weight: 700; padding: 0 5px; margin-left: 6px;
+  background: #FF6B35; color: #fff;
+}
+.tab-count.verde { background: #48BB78; }
+.tab-count.azul  { background: #63B3ED; }
+
+.cocina-content { padding: 1.25rem 1.5rem; }
+
+.pedidos-cocina-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.pedido-cocina-card {
+  background: #1E293B;
+  border-radius: 14px;
+  border: 2px solid #334155;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.pedido-cocina-card.urgente { border-color: #FC8181; }
+.pedido-cocina-card.en-prep { border-color: #F6AD55; }
+.pedido-cocina-card.listo   { border-color: #48BB78; }
+
+.card-top {
+  background: #0F172A; padding: 1rem 1.25rem;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.card-numero { font-family: monospace; font-size: 1rem; font-weight: 700; color: #FF6B35; }
+.card-mesa   { font-size: 1.5rem; font-weight: 800; color: #E2E8F0; }
+.card-tiempo {
+  font-size: 0.78rem; color: #94A3B8;
+  background: #1E293B; padding: 3px 8px; border-radius: 20px;
+}
+.card-tiempo.urgente { color: #FC8181; background: rgba(252,129,129,0.15); }
+
+.card-productos { padding: 1rem 1.25rem; min-height: 100px; }
+.prod-cocina-item {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 0.5rem 0; border-bottom: 1px solid #334155; font-size: 0.9rem;
+}
+.prod-cocina-item:last-child { border-bottom: none; }
+.prod-cant {
+  background: #FF6B35; color: #fff; font-weight: 700;
+  min-width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; flex-shrink: 0;
+}
+.prod-nombre { flex: 1; padding: 0 0.75rem; font-weight: 500; }
+.prod-obs { font-size: 0.75rem; color: #F6AD55; margin-top: 2px; }
+
+.card-obs {
+  margin: 0 1.25rem 0.75rem;
+  background: rgba(246,173,85,0.1); border-radius: 8px;
+  padding: 0.5rem 0.75rem; font-size: 0.82rem; color: #F6AD55;
+  border-left: 3px solid #F6AD55;
+}
+
+.card-acciones {
+  padding: 1rem 1.25rem;
+  display: flex; gap: 0.5rem;
+  border-top: 1px solid #334155;
+}
+.btn-cocina {
+  flex: 1; padding: 0.65rem; border: none; border-radius: 8px;
+  font-family: 'Poppins',sans-serif; font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-confirmar { background: #2563EB; color: #fff; }
+.btn-en-prep   { background: #D97706; color: #fff; }
+.btn-listo     { background: #059669; color: #fff; }
+.btn-entregar  { background: #7C3AED; color: #fff; }
+.btn-cocina:hover { opacity: 0.85; transform: translateY(-1px); }
+
+.sin-pedidos {
+  grid-column: 1 / -1; text-align: center;
+  padding: 4rem; color: #475569;
+}
+.sin-pedidos span { font-size: 3rem; display: block; margin-bottom: 1rem; }
+
+.cocina-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1.5rem; background: #1E293B;
+  font-size: 0.85rem; color: #94A3B8;
+}
+.cocina-toolbar strong { color: #E2E8F0; }
+
+@media (max-width: 600px) {
+  .pedidos-cocina-grid { grid-template-columns: 1fr; }
+  .cocina-tabs { overflow-x: auto; }
+  .cocina-tab { padding: 0.75rem 1rem; white-space: nowrap; }
+}

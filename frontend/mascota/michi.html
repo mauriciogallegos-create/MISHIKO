@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISHIKO – Mi Mascota Michi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/mishiko.css">
+  <style>
+    .michi-page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+    .michi-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .michi-preview {
+      background: linear-gradient(135deg,#2D3748,#1a2535);
+      border-radius: 20px; padding: 2rem;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 400px; position: relative;
+    }
+    #michi-3d-canvas { border-radius: 10px; }
+    .michi-nombre-preview {
+      color: #FF6B35; font-size: 1.2rem; font-weight: 700;
+      margin-top: 1rem; text-align: center;
+    }
+    .michi-burbuja-preview {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,107,53,0.4);
+      border-radius: 12px; padding: 0.75rem 1.1rem; margin-top: 0.75rem;
+      color: #E2E8F0; font-size: 0.88rem; text-align: center; max-width: 220px;
+    }
+    .config-panel { background: #fff; border-radius: 20px; padding: 2rem; box-shadow: var(--shadow); }
+    .config-panel h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .color-options { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; }
+    .color-btn {
+      width: 42px; height: 42px; border-radius: 50%;
+      border: 3px solid transparent; cursor: pointer;
+      transition: all 0.2s; outline: none;
+    }
+    .color-btn.selected { border-color: var(--primary); transform: scale(1.15); }
+    .color-naranja { background: #FF8C42; }
+    .color-blanco  { background: #F5F5F5; border: 2px solid #ddd; }
+    .color-gris    { background: #9E9E9E; }
+    .color-negro   { background: #212121; }
+    .btn-voz-test {
+      background: var(--primary); color: #fff; border: none;
+      border-radius: 8px; padding: 7px 16px; cursor: pointer;
+      font-family: var(--font); font-size: 0.85rem; font-weight: 600;
+      margin-top: 0.4rem;
+    }
+    .slider-volume { width: 100%; accent-color: var(--primary); }
+    @media (max-width: 700px) { .michi-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a href="../index.html" style="display:flex;align-items:center;gap:0.5rem;text-decoration:none;color:var(--primary)">
+        <span>🐱</span><span class="logo-text">MISHIKO</span>
+      </a>
+    </div>
+    <a href="../menu.html?restauranteId=1&mesa=1" class="btn btn-primary" style="font-size:0.85rem">← Volver al Menú</a>
+  </nav>
+
+  <div class="michi-page">
+    <h1 style="font-size:1.5rem;font-weight:700;margin-bottom:0.3rem">🐱 Mi Mascota – Michi</h1>
+    <p style="color:var(--text-muted);margin-bottom:2rem">Personaliza a tu mesero virtual favorito</p>
+
+    <div class="michi-layout">
+      <!-- Vista previa 3D -->
+      <div class="michi-preview">
+        <canvas id="michi-3d-canvas" width="250" height="280"></canvas>
+        <div class="michi-nombre-preview" id="preview-nombre">Michi</div>
+        <div class="michi-burbuja-preview" id="preview-msg">¡Hola! Soy <strong id="msg-nombre">Michi</strong>, tu mesero 🐱</div>
+        <div style="margin-top:1rem;display:flex;gap:0.75rem">
+          <button class="btn-voz-test" onclick="probarVoz()">🔊 Probar voz</button>
+          <button class="btn-voz-test" style="background:var(--secondary)" onclick="michiSaluda()">👋 Saludar</button>
+        </div>
+      </div>
+
+      <!-- Configuración -->
+      <div class="config-panel">
+        <h2>⚙️ Configuración</h2>
+
+        <!-- Nombre -->
+        <div class="form-group">
+          <label class="form-label">Nombre de la mascota</label>
+          <input type="text" id="cfg-nombre" class="form-control" value="Michi" maxlength="20"
+            oninput="actualizarNombre(this.value)" placeholder="Nombre de tu mascota">
+        </div>
+
+        <!-- Color de pelaje -->
+        <div class="form-group">
+          <label class="form-label">Color de pelaje</label>
+          <div class="color-options">
+            <button class="color-btn color-naranja selected" onclick="seleccionarColor('#FF8C42', this)" title="Naranja"></button>
+            <button class="color-btn color-blanco"  onclick="seleccionarColor('#F5F5F5', this)" title="Blanco"></button>
+            <button class="color-btn color-gris"    onclick="seleccionarColor('#9E9E9E', this)" title="Gris"></button>
+            <button class="color-btn color-negro"   onclick="seleccionarColor('#212121', this)" title="Negro"></button>
+          </div>
+        </div>
+
+        <!-- Voz -->
+        <div class="form-group">
+          <label class="form-label">Voz de Michi</label>
+          <select id="cfg-voz" class="form-control" onchange="seleccionarVoz()">
+            <option value="">Voz por defecto</option>
+          </select>
+          <button class="btn-voz-test" onclick="probarVozSeleccionada()">▶ Probar</button>
+        </div>
+
+        <!-- Volumen -->
+        <div class="form-group">
+          <label class="form-label">Volumen: <span id="lbl-vol">90%</span></label>
+          <input type="range" id="cfg-volumen" class="slider-volume"
+            min="0" max="1" step="0.05" value="0.9"
+            oninput="actualizarVolumen(this.value)">
+        </div>
+
+        <!-- Toggles -->
+        <div class="form-group">
+          <div style="display:flex;flex-direction:column;gap:0.75rem">
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer">
+              <input type="checkbox" id="cfg-voz-activa" checked onchange="toggleVoz(this.checked)">
+              <span>Voz activa</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer">
+              <input type="checkbox" id="cfg-mostrar" checked onchange="toggleMostrar(this.checked)">
+              <span>Mostrar Michi en el menú</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Micrófono -->
+        <div class="form-group">
+          <label class="form-label">Reconocimiento de Voz</label>
+          <button class="btn btn-primary btn-full" id="btn-mic-test" onclick="iniciarReconocimiento(onReconocimiento)">
+            🎤 Probar micrófono
+          </button>
+          <div id="texto-reconocido" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-muted);min-height:20px"></div>
+        </div>
+
+        <!-- Guardar -->
+        <button class="btn btn-primary btn-full" onclick="guardarPreferencias()" style="margin-top:0.5rem">
+          💾 Guardar Preferencias
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/notifications.js"></script>
+  <script src="../js/michi.js"></script>
+  <script>
+    // Inicializar el canvas grande de la página
+    document.addEventListener('DOMContentLoaded', () => {
+      initMichi3D('michi-3d-canvas');
+      cargarVocesUI();
+      cargarPreferencias();
+    });
+
+    function cargarVocesUI() {
+      const selectVoz = document.getElementById('cfg-voz');
+      function poblar() {
+        const voces = cargarVoces();
+        selectVoz.innerHTML = '<option value="">Voz por defecto</option>';
+        voces.forEach((v, i) => {
+          const opt = new Option(`${v.name} (${v.lang})`, i);
+          selectVoz.appendChild(opt);
+        });
+      }
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = poblar;
+        poblar();
+      }
+    }
+
+    function seleccionarVoz() {
+      const idx = parseInt(document.getElementById('cfg-voz').value);
+      if (!isNaN(idx) && vozesDisponibles[idx]) vozSeleccionada = vozesDisponibles[idx];
+      else vozSeleccionada = null;
+    }
+
+    function actualizarNombre(nombre) {
+      MichiConfig.nombre = nombre || 'Michi';
+      document.getElementById('preview-nombre').textContent = MichiConfig.nombre;
+      document.getElementById('msg-nombre').textContent = MichiConfig.nombre;
+    }
+
+    function seleccionarColor(hex, btn) {
+      MichiConfig.color = hex;
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      cambiarColorMichi(hex);
+    }
+
+    function actualizarVolumen(val) {
+      MichiConfig.volumen = parseFloat(val);
+      document.getElementById('lbl-vol').textContent = Math.round(val * 100) + '%';
+    }
+
+    function toggleVoz(activo) { MichiConfig.vozActiva = activo; }
+    function toggleMostrar(mostrar) { MichiConfig.mostrar = mostrar; }
+
+    function probarVoz() {
+      michiHabla(`¡Hola! Soy ${MichiConfig.nombre}, tu mesero virtual favorito. ¡Bienvenido a MISHIKO!`, true);
+    }
+    function probarVozSeleccionada() { seleccionarVoz(); probarVoz(); }
+    function michiSaluda() { michiHabla(`¡Hola! Soy ${MichiConfig.nombre} y estoy listo para ayudarte a elegir. ¿Qué se te antoja hoy? 🍽`); }
+
+    function onReconocimiento(texto) {
+      document.getElementById('texto-reconocido').textContent = `Escuché: "${texto}"`;
+      michiHabla(`Escuché: ${texto}`);
+    }
+
+    async function guardarPreferencias() {
+      const prefs = {
+        nombreMascota: MichiConfig.nombre,
+        colorPelaje:   MichiConfig.color,
+        vozActiva:     MichiConfig.vozActiva,
+        volumen:       MichiConfig.volumen,
+        mostrarMascota: MichiConfig.mostrar
+      };
+      localStorage.setItem('mishiko_michi_prefs', JSON.stringify(prefs));
+
+      if (Auth.isLoggedIn()) {
+        try {
+          await api.put('/mascota/preferencias', prefs, true);
+          mostrarToast('✅ Preferencias guardadas en tu cuenta', 'success');
+          return;
+        } catch (_) {}
+      }
+      mostrarToast('✅ Preferencias guardadas localmente', 'success');
+    }
+
+    function cargarPreferencias() {
+      const saved = JSON.parse(localStorage.getItem('mishiko_michi_prefs') || 'null');
+      if (!saved) return;
+      if (saved.nombreMascota) { actualizarNombre(saved.nombreMascota); document.getElementById('cfg-nombre').value = saved.nombreMascota; }
+      if (saved.colorPelaje)   { seleccionarColor(saved.colorPelaje, document.querySelector(`.color-btn[onclick*="${saved.colorPelaje.replace('#','%23')}"]`) || document.querySelector('.color-btn')); }
+      if (saved.volumen != null) { document.getElementById('cfg-volumen').value = saved.volumen; actualizarVolumen(saved.volumen); }
+      if (saved.vozActiva != null) { document.getElementById('cfg-voz-activa').checked = saved.vozActiva; MichiConfig.vozActiva = saved.vozActiva; }
+    }
+  </script>
+</body>
+</html>

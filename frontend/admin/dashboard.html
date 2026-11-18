@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISHIKO Admin – Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/mishiko.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">🐱 MISHIKO Admin</div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="active">📊 Dashboard</a>
+        <a href="productos.html">🍽 Productos</a>
+        <a href="categorias.html">📂 Categorías</a>
+        <a href="pedidos.html">📋 Pedidos</a>
+        <a href="mesas.html">🪑 Mesas</a>
+        <a href="../cocina/consola.html">👨‍🍳 Cocina</a>
+      </nav>
+      <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.1)">
+        <div style="font-size:0.82rem;color:rgba(255,255,255,0.6);margin-bottom:0.5rem" id="user-info">-</div>
+        <button onclick="Auth.logout()" class="btn" style="background:rgba(255,107,53,0.2);color:#FF6B35;width:100%;font-size:0.82rem">Cerrar Sesión</button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="admin-main">
+      <div class="admin-topbar">
+        <h2 style="font-size:1.1rem;font-weight:600">📊 Dashboard</h2>
+        <div style="font-size:0.85rem;color:var(--text-muted)" id="fecha-hoy"></div>
+      </div>
+      <div class="admin-content">
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">📋</div>
+            <div class="stat-info"><strong id="stat-total">0</strong><span>Pedidos Hoy</span></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🕐</div>
+            <div class="stat-info"><strong id="stat-pendientes">0</strong><span>Pendientes</span></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🍳</div>
+            <div class="stat-info"><strong id="stat-en-prep">0</strong><span>En Preparación</span></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info"><strong id="stat-listos">0</strong><span>Listos</span></div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid var(--success)">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info"><strong id="stat-ventas">S/ 0</strong><span>Ventas del día</span></div>
+          </div>
+        </div>
+
+        <!-- Gráfico + Últimos pedidos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+          <div class="table-container" style="padding:1.25rem">
+            <h3 style="font-size:0.95rem;margin-bottom:1rem;font-weight:600">📈 Pedidos por Estado</h3>
+            <canvas id="chart-estados" height="200"></canvas>
+          </div>
+          <div class="table-container" style="padding:1.25rem">
+            <h3 style="font-size:0.95rem;margin-bottom:1rem;font-weight:600">⭐ Productos más pedidos</h3>
+            <div id="top-productos" style="font-size:0.88rem"></div>
+          </div>
+        </div>
+
+        <!-- Últimos pedidos -->
+        <div class="table-container">
+          <div style="padding:1rem 1.25rem;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between;align-items:center">
+            <h3 style="font-size:0.95rem;font-weight:600">📋 Últimos Pedidos</h3>
+            <a href="pedidos.html" class="btn btn-primary" style="font-size:0.8rem;padding:5px 14px">Ver todos</a>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>N° Pedido</th><th>Mesa</th><th>Total</th><th>Estado</th><th>Hora</th><th>Acciones</th>
+              </tr></thead>
+              <tbody id="tbody-pedidos">
+                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/notifications.js"></script>
+  <script>
+    Auth.requireAuth(['ADMIN','PERSONAL']);
+
+    document.getElementById('fecha-hoy').textContent = new Date().toLocaleDateString('es-PE',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    const user = Auth.getUser();
+    if (user) document.getElementById('user-info').textContent = `${user.nombre} · ${user.rol}`;
+
+    let chartEstados = null;
+
+    async function cargarDashboard() {
+      try {
+        const pedidos = await api.get('/admin/pedidos?restauranteId=1', true);
+        const hoy = new Date().toDateString();
+        const pedidosHoy = pedidos.filter(p => new Date(p.createdAt).toDateString() === hoy);
+
+        document.getElementById('stat-total').textContent     = pedidosHoy.length;
+        document.getElementById('stat-pendientes').textContent = pedidos.filter(p => p.estado === 'PENDIENTE').length;
+        document.getElementById('stat-en-prep').textContent   = pedidos.filter(p => p.estado === 'EN_PREPARACION').length;
+        document.getElementById('stat-listos').textContent    = pedidos.filter(p => p.estado === 'LISTO').length;
+
+        const ventas = pedidosHoy.filter(p => !['CANCELADO'].includes(p.estado)).reduce((s,p) => s + parseFloat(p.total||0), 0);
+        document.getElementById('stat-ventas').textContent = `S/ ${ventas.toFixed(2)}`;
+
+        // Tabla últimos 10 pedidos
+        const tbody = document.getElementById('tbody-pedidos');
+        tbody.innerHTML = pedidos.slice(0,10).map(p => `
+          <tr>
+            <td style="font-family:monospace;font-weight:600">${p.numeroPedido}</td>
+            <td>${p.mesaNumero ? 'Mesa '+p.mesaNumero : '-'}</td>
+            <td style="color:var(--primary);font-weight:600">S/ ${parseFloat(p.total||0).toFixed(2)}</td>
+            <td><span class="estado-badge estado-${p.estado}">${p.estado.replace('_',' ')}</span></td>
+            <td style="font-size:0.82rem">${p.createdAt ? new Date(p.createdAt).toLocaleTimeString('es-PE') : '-'}</td>
+            <td>
+              <a href="../seguimiento.html?numero=${p.numeroPedido}" class="btn btn-secondary" style="font-size:0.75rem;padding:4px 10px">Ver</a>
+            </td>
+          </tr>`).join('');
+
+        // Gráfico de estados
+        const estados = ['PENDIENTE','CONFIRMADO','EN_PREPARACION','LISTO','ENTREGADO','CANCELADO'];
+        const counts  = estados.map(e => pedidos.filter(p => p.estado === e).length);
+        const ctx = document.getElementById('chart-estados').getContext('2d');
+        if (chartEstados) chartEstados.destroy();
+        chartEstados = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Pendiente','Confirmado','En Prep.','Listo','Entregado','Cancelado'],
+            datasets: [{ data: counts, backgroundColor: ['#F6AD55','#63B3ED','#F6AD55','#48BB78','#9F7AEA','#FC8181'] }]
+          },
+          options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Poppins', size: 11 } } } } }
+        });
+
+        // Top productos
+        const conteo = {};
+        pedidos.forEach(p => (p.detalles||[]).forEach(d => { conteo[d.productoNombre] = (conteo[d.productoNombre]||0) + d.cantidad; }));
+        const top = Object.entries(conteo).sort((a,b) => b[1]-a[1]).slice(0,5);
+        document.getElementById('top-productos').innerHTML = top.map(([n,c],i) =>
+          `<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #f5f5f5">
+            <span>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]} ${n}</span>
+            <strong style="color:var(--primary)">${c} pedidos</strong>
+          </div>`).join('') || '<p style="color:var(--text-muted)">Sin datos</p>';
+
+      } catch (err) {
+        mostrarToast('Error cargando dashboard: ' + err.message, 'error');
+      }
+    }
+
+    cargarDashboard();
+    setInterval(cargarDashboard, 30000); // actualizar cada 30s
+  </script>
+</body>
+</html>
