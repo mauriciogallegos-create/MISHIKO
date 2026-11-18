@@ -217,6 +217,16 @@
 .btn-carrito:hover { background: var(--primary-dark); }
 
 /* Carrito Panel */
+#overlay-carrito {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 499;
+}
+
+#overlay-carrito.active { display: block; }
+
 .carrito-panel {
   position: fixed;
   right: 0;
@@ -363,4 +373,36 @@
 }
 @media (max-width: 400px) {
   .productos-grid { grid-template-columns: 1fr; }
+}
+
+
+#restaurante-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: .5rem;
+}
+
+.michi-comandos {
+  margin: .75rem 0 1rem;
+}
+
+.michi-comandos summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.michi-comandos form {
+  margin-top: .75rem;
+}
+
+.michi-comandos-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .5rem;
+}
+
+#michi-respuesta {
+  margin-top: .5rem;
 }

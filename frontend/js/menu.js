@@ -10,6 +10,7 @@ let restauranteId = 1;
 let mesaId = null;
 let mesaNumero = 1;
 let pedidoConfirmadoId = null;
+let solicitudPendiente = null;
 
 // ── Inicialización ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -36,8 +37,15 @@ async function cargarMenu() {
   try {
     const data = await api.get(`/menu?restauranteId=${restauranteId}&mesa=${mesaNumero}`);
 
-    // Nombre del restaurante (podría agregarse un endpoint de restaurante)
-    document.getElementById('restaurante-nombre').textContent = 'MISHIKO Restaurant';
+    const restaurante = data.restaurante;
+    document.getElementById('restaurante-nombre').textContent = restaurante?.nombre || 'MISHIKO';
+    document.getElementById('restaurante-desc').textContent = restaurante?.descripcion || '';
+    const logo = document.getElementById('restaurante-logo');
+    if (restaurante?.logoUrl) {
+      logo.onload = () => { logo.hidden = false; };
+      logo.onerror = () => { logo.hidden = true; };
+      logo.src = urlImagenMishiko(restaurante.logoUrl);
+    }
 
     todosProductos = data.productos || [];
     renderCategorias(data.categorias || []);
@@ -85,12 +93,15 @@ function renderProductos(productos) {
 
   grid.style.display = 'grid';
   grid.innerHTML = productos.map(p => crearProductoCard(p)).join('');
+  grid.querySelectorAll('.producto-card').forEach((card, indice) => {
+    card.querySelector('.btn-agregar')?.addEventListener('click', () => agregarAlCarrito(productos[indice]));
+  });
 }
 
 function crearProductoCard(p) {
   const agotado = !p.disponible;
   const imgHtml = p.imagenUrl
-    ? `<img src="${p.imagenUrl}" alt="${p.nombre}" onerror="this.parentElement.innerHTML='🍽'">`
+    ? `<img src="${escaparHtml(urlImagenMishiko(p.imagenUrl))}" alt="${escaparHtml(p.nombre)}" onerror="this.parentElement.innerHTML='🍽'">`
     : '🍽';
   const precioFmt = 'S/ ' + parseFloat(p.precio).toFixed(2);
 
@@ -101,14 +112,14 @@ function crearProductoCard(p) {
         ${imgHtml}
       </div>
       <div class="producto-body">
-        <div class="producto-categoria">${p.categoriaNombre || ''}</div>
-        <div class="producto-nombre">${p.nombre}</div>
-        <div class="producto-desc">${p.descripcion || ''}</div>
+        <div class="producto-categoria">${escaparHtml(p.categoriaNombre || '')}</div>
+        <div class="producto-nombre">${escaparHtml(p.nombre)}</div>
+        <div class="producto-desc">${escaparHtml(p.descripcion || '')}</div>
         <div class="producto-footer">
           <span class="producto-precio">${precioFmt}</span>
           ${agotado
             ? '<span class="text-muted" style="font-size:0.82rem">No disponible</span>'
-            : `<button class="btn-agregar" onclick='agregarAlCarrito(${JSON.stringify(p)})'>+ Agregar</button>`
+            : `<button type="button" class="btn-agregar">+ Agregar</button>`
           }
         </div>
       </div>
@@ -185,7 +196,7 @@ function renderCarritoItems() {
   container.innerHTML = items.map(item => `
     <div class="carrito-item">
       <div class="carrito-item-info">
-        <div class="carrito-item-nombre">${item.nombre}</div>
+        <div class="carrito-item-nombre">${escaparHtml(item.nombre)}</div>
         <div class="carrito-item-precio">${Cart.fmt(item.precio * item.cantidad)}</div>
         <div class="cantidad-control" style="margin-top:0.3rem">
           <button class="btn-cantidad" onclick="cambiarCantidad(${item.id}, ${item.cantidad - 1})">−</button>
@@ -193,7 +204,7 @@ function renderCarritoItems() {
           <button class="btn-cantidad" onclick="cambiarCantidad(${item.id}, ${item.cantidad + 1})">+</button>
         </div>
         <div class="carrito-item-obs">
-          <input type="text" placeholder="Observación..." value="${item.observacion || ''}"
+          <input type="text" placeholder="Observación..." value="${escaparHtml(item.observacion || '')}"
             oninput="Cart.setObservacion(${item.id}, this.value)"
             style="width:100%;font-size:0.8rem;padding:3px 6px;border:1px solid #e2e8f0;border-radius:5px;font-family:var(--font)">
         </div>
@@ -228,10 +239,10 @@ function abrirRevision() {
   document.getElementById('rev-mesa').textContent = mesaNumero;
   document.getElementById('rev-lista').innerHTML = items.map(i => `
     <div class="revision-item">
-      <span>${i.cantidad}× ${i.nombre}</span>
+      <span>${i.cantidad}× ${escaparHtml(i.nombre)}</span>
       <span>${Cart.fmt(i.precio * i.cantidad)}</span>
     </div>
-    ${i.observacion ? `<div style="font-size:0.78rem;color:var(--text-muted);padding:2px 0 4px 1rem">Obs: ${i.observacion}</div>` : ''}`
+    ${i.observacion ? `<div style="font-size:0.78rem;color:var(--text-muted);padding:2px 0 4px 1rem">Obs: ${escaparHtml(i.observacion)}</div>` : ''}`
   ).join('');
 
   document.getElementById('rev-subtotal').textContent = Cart.fmt(Cart.subtotal());
@@ -248,9 +259,9 @@ function cerrarModal(id) {
 // ── Confirmar Pedido ───────────────────────────────────────────────────────────
 async function confirmarPedido() {
   const items = Cart.get();
-  if (items.length === 0) return;
-
   const btn = document.getElementById('btn-confirmar');
+  if (items.length === 0 || btn.disabled) return;
+
   btn.disabled = true;
   btn.textContent = 'Enviando...';
 
@@ -274,7 +285,15 @@ async function confirmarPedido() {
   };
 
   try {
-    const pedido = await api.post('/pedidos', payload);
+    const detalleSolicitud = JSON.stringify(payload);
+    if (solicitudPendiente?.detalle !== detalleSolicitud) {
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      const id = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+      solicitudPendiente = { detalle: detalleSolicitud, id };
+    }
+    const pedido = await api.post('/pedidos', { ...payload, solicitudId: solicitudPendiente.id });
+    if (!pedido) return;
+    solicitudPendiente = null;
 
     pedidoConfirmadoId = pedido.id;
     document.getElementById('conf-numero').textContent = pedido.numeroPedido;
@@ -310,6 +329,6 @@ function mostrarToast(msg, tipo = 'info', duracion = 3000) {
 
 function mostrarError(msg) {
   document.getElementById('loading-menu').style.display = 'none';
-  document.getElementById('productos-grid').innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--error)">⚠ ${msg}</div>`;
+  document.getElementById('productos-grid').innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--error)">⚠ ${escaparHtml(msg)}</div>`;
   document.getElementById('productos-grid').style.display = 'grid';
 }

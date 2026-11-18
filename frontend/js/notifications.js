@@ -15,6 +15,19 @@ const Notifications = {
     return await Notification.requestPermission();
   },
 
+  configurarBotonPermiso(boton) {
+    if (!boton) return;
+    boton.hidden = !('Notification' in window) || Notification.permission === 'granted';
+    boton.addEventListener('click', async () => {
+      if (await this.requestPermission() === 'granted') {
+        boton.hidden = true;
+        this.toast('Notificaciones activadas', 'success');
+      } else {
+        this.toast('Puedes habilitar las notificaciones en los permisos del navegador.', 'info');
+      }
+    });
+  },
+
   /**
    * Mostrar notificación del navegador (con fallback a toast)
    * @param {string} title
@@ -24,12 +37,9 @@ const Notifications = {
   async show(title, body, tipo = 'info') {
     // Intentar notificación nativa
     if ('Notification' in window && Notification.permission === 'granted') {
-      const icon = tipo === 'success' ? '✅' : tipo === 'error' ? '❌' : '🐱';
       try {
         new Notification(`🐱 MISHIKO – ${title}`, {
           body,
-          icon: '../assets/logo.svg',
-          badge: '../assets/logo.svg',
           tag: 'mishiko-' + Date.now()
         });
       } catch (_) { /* fallback */ }
@@ -56,7 +66,11 @@ const Notifications = {
     const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
     const toast = document.createElement('div');
     toast.className = `toast toast-${tipo}`;
-    toast.innerHTML = `<span>${icons[tipo] || 'ℹ️'}</span><span>${mensaje}</span>`;
+    const icono = document.createElement('span');
+    icono.textContent = icons[tipo] || 'ℹ️';
+    const texto = document.createElement('span');
+    texto.textContent = mensaje;
+    toast.append(icono, texto);
     container.appendChild(toast);
 
     setTimeout(() => {

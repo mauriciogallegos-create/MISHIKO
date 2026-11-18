@@ -65,12 +65,9 @@
       display: inline-block; padding: 1.5rem; border: 3px dashed #FF6B35;
       border-radius: 16px; background: #FFF8F5;
     }
-    .qr-placeholder {
-      width: 160px; height: 160px; background: #2D3748;
-      border-radius: 8px; margin: 0 auto 1rem;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 5rem; color: #fff;
-    }
+    #qr-mesa { display: block; margin: .5rem auto; }
+    #qr-imagen { display: block; margin: .5rem auto; }
+    #qr-imagen[hidden] { display: none; }
     .qr-label { font-weight: 600; color: #FF6B35; margin-bottom: 0.4rem; }
     .qr-url { font-size: 0.8rem; color: #718096; word-break: break-all; }
 
@@ -153,9 +150,10 @@
     <h2>Accede directamente a tu mesa</h2>
     <p>Haz clic en la mesa de tu preferencia o escanea el QR en el local.</p>
     <div class="qr-box">
-      <div class="qr-placeholder">🍽</div>
-      <div class="qr-label">MISHIKO Restaurant</div>
-      <div class="qr-url">Escanea para abrir el menú</div>
+      <label class="qr-label" for="qr-mesa">Código QR de la mesa</label>
+      <select id="qr-mesa"></select>
+      <img id="qr-imagen" width="180" height="180" alt="">
+      <div id="qr-estado" class="qr-url" role="status"></div>
     </div>
     <div class="mesas-grid">
       <a href="menu.html?restauranteId=1&mesa=1&mesaId=1" class="mesa-qr-btn">Mesa 1</a>
@@ -169,5 +167,7 @@
     <p><strong>MISHIKO Restaurant</strong> · Jr. Las Palmeras 123, Lima, Perú · Tel: 01-123-4567</p>
     <p style="margin-top:0.5rem">© 2024 MISHIKO · Todos los derechos reservados</p>
   </footer>
+  <script src="js/api.js"></script>
+  <script src="js/mesas.js"></script>
 </body>
 </html>

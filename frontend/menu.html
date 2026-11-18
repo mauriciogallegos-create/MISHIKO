@@ -26,6 +26,7 @@
 
   <!-- Restaurante Header -->
   <div class="restaurante-header" id="restaurante-header">
+    <img id="restaurante-logo" alt="" hidden>
     <div class="restaurante-info">
       <h1 id="restaurante-nombre">Cargando...</h1>
       <p id="restaurante-desc" class="restaurante-desc"></p>
@@ -38,6 +39,19 @@
       <span class="search-icon">🔍</span>
       <input type="text" id="input-busqueda" placeholder="Buscar platillos..." oninput="buscarProductos(this.value)">
     </div>
+
+    <details class="michi-comandos">
+      <summary>🐱 Consultar a Michi</summary>
+      <form id="form-michi">
+        <label for="texto-reconocido">Escribe o dicta tu consulta</label>
+        <input id="texto-reconocido" class="form-control" maxlength="240" placeholder="Quiero dos limonadas">
+        <div class="michi-comandos-acciones">
+          <button type="submit" class="btn btn-primary">Enviar a Michi</button>
+          <button type="button" id="btn-mic" class="btn btn-secondary">🎤 Hablar con Michi</button>
+        </div>
+      </form>
+      <p id="michi-respuesta" role="status"></p>
+    </details>
 
     <!-- Filtros de Categorías -->
     <div class="categorias-scroll" id="categorias-container">
@@ -90,8 +104,8 @@
   </div>
 
   <!-- Modal de Revisión -->
-  <div id="modal-revision" class="modal" style="display:none">
-    <div class="modal-content">
+  <div id="modal-revision" class="modal-overlay" style="display:none">
+    <div class="modal">
       <div class="modal-header">
         <h3>📋 Revisión del Pedido</h3>
         <button class="btn-cerrar" onclick="cerrarModal('modal-revision')">✕</button>
@@ -119,8 +133,8 @@
   </div>
 
   <!-- Modal de Confirmación -->
-  <div id="modal-confirmacion" class="modal" style="display:none">
-    <div class="modal-content modal-success">
+  <div id="modal-confirmacion" class="modal-overlay" style="display:none">
+    <div class="modal modal-success">
       <div class="modal-body text-center">
         <div class="success-icon">🎉</div>
         <h3>¡Pedido Confirmado!</h3>
@@ -154,6 +168,7 @@
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/cart.js"></script>
+  <script src="js/notifications.js"></script>
   <script src="js/menu.js"></script>
   <script src="js/michi.js"></script>
 </body>

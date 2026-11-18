@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -49,18 +50,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors(Customizer.withDefaults())
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/menu/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/*.html", "/admin/*.html", "/cocina/*.html", "/mascota/*.html", "/css/**", "/js/**", "/assets/**", "/uploads/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/menu/**", "/mesas/{id}/qr").permitAll()
                 .requestMatchers(HttpMethod.GET, "/productos/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/categorias/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/pedidos").permitAll()
                 .requestMatchers(HttpMethod.GET, "/pedidos/numero/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/pedidos/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/comprobantes/{pedidoId}", "/comprobantes/{pedidoId}/pdf").permitAll()
                 // Swagger UI
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 // Rutas de administración

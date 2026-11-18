@@ -2,7 +2,9 @@ package com.mishiko.infrastructure.adapter.out.persistence;
 
 import com.mishiko.domain.model.EstadoPedidoEnum;
 import com.mishiko.domain.model.Pedido;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -24,6 +26,9 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     Optional<Pedido> findByNumeroPedido(String numeroPedido);
 
-    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(p.numeroPedido, 4) AS long)), 0) FROM Pedido p WHERE p.numeroPedido LIKE 'PED%'")
-    Long findMaxNumeroPedido();
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Pedido p WHERE p.id = :id")
+    Optional<Pedido> buscarParaActualizarEstado(@Param("id") Long id);
+
+    Optional<Pedido> findByMesaIdAndSolicitudId(Long mesaId, String solicitudId);
 }

@@ -164,10 +164,11 @@
       function poblar() {
         const voces = cargarVoces();
         selectVoz.innerHTML = '<option value="">Voz por defecto</option>';
-        voces.forEach((v, i) => {
-          const opt = new Option(`${v.name} (${v.lang})`, i);
+        voces.forEach(v => {
+          const opt = new Option(`${v.name} (${v.lang})`, v.voiceURI);
           selectVoz.appendChild(opt);
         });
+        seleccionarVozGuardada();
       }
       if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = poblar;
@@ -176,9 +177,12 @@
     }
 
     function seleccionarVoz() {
-      const idx = parseInt(document.getElementById('cfg-voz').value);
-      if (!isNaN(idx) && vozesDisponibles[idx]) vozSeleccionada = vozesDisponibles[idx];
-      else vozSeleccionada = null;
+      MichiConfig.vozURI = document.getElementById('cfg-voz').value;
+    }
+
+    function seleccionarVozGuardada() {
+      const selectVoz = document.getElementById('cfg-voz');
+      selectVoz.value = vozesDisponibles.some(v => v.voiceURI === MichiConfig.vozURI) ? MichiConfig.vozURI : '';
     }
 
     function actualizarNombre(nombre) {
@@ -190,7 +194,7 @@
     function seleccionarColor(hex, btn) {
       MichiConfig.color = hex;
       document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
+      btn?.classList.add('selected');
       cambiarColorMichi(hex);
     }
 
@@ -200,7 +204,10 @@
     }
 
     function toggleVoz(activo) { MichiConfig.vozActiva = activo; }
-    function toggleMostrar(mostrar) { MichiConfig.mostrar = mostrar; }
+    function toggleMostrar(mostrar) {
+      MichiConfig.mostrar = mostrar;
+      document.getElementById('michi-3d-canvas').hidden = !mostrar;
+    }
 
     function probarVoz() {
       michiHabla(`¡Hola! Soy ${MichiConfig.nombre}, tu mesero virtual favorito. ¡Bienvenido a MISHIKO!`, true);
@@ -218,6 +225,7 @@
         nombreMascota: MichiConfig.nombre,
         colorPelaje:   MichiConfig.color,
         vozActiva:     MichiConfig.vozActiva,
+        vozSeleccionada: MichiConfig.vozURI,
         volumen:       MichiConfig.volumen,
         mostrarMascota: MichiConfig.mostrar
       };
@@ -225,21 +233,50 @@
 
       if (Auth.isLoggedIn()) {
         try {
-          await api.put('/mascota/preferencias', prefs, true);
-          mostrarToast('✅ Preferencias guardadas en tu cuenta', 'success');
-          return;
+          const respuesta = await api.put('/mascota/preferencias', prefs, true);
+          if (respuesta) {
+            mostrarToast('✅ Preferencias guardadas en tu cuenta', 'success');
+            return;
+          }
         } catch (_) {}
       }
       mostrarToast('✅ Preferencias guardadas localmente', 'success');
     }
 
-    function cargarPreferencias() {
-      const saved = JSON.parse(localStorage.getItem('mishiko_michi_prefs') || 'null');
+    async function cargarPreferencias() {
+      let saved = null;
+      try {
+        saved = JSON.parse(localStorage.getItem('mishiko_michi_prefs'));
+      } catch (_) {}
+      if (Auth.isLoggedIn()) {
+        try {
+          saved = (await api.get('/mascota/preferencias', true)) || saved;
+        } catch (_) {}
+      }
       if (!saved) return;
-      if (saved.nombreMascota) { actualizarNombre(saved.nombreMascota); document.getElementById('cfg-nombre').value = saved.nombreMascota; }
-      if (saved.colorPelaje)   { seleccionarColor(saved.colorPelaje, document.querySelector(`.color-btn[onclick*="${saved.colorPelaje.replace('#','%23')}"]`) || document.querySelector('.color-btn')); }
-      if (saved.volumen != null) { document.getElementById('cfg-volumen').value = saved.volumen; actualizarVolumen(saved.volumen); }
-      if (saved.vozActiva != null) { document.getElementById('cfg-voz-activa').checked = saved.vozActiva; MichiConfig.vozActiva = saved.vozActiva; }
+      if (saved.nombreMascota) {
+        actualizarNombre(saved.nombreMascota);
+        document.getElementById('cfg-nombre').value = saved.nombreMascota;
+      }
+      const color = saved.colorPelaje === 'naranja' ? '#FF8C42' : saved.colorPelaje;
+      if (/^#[0-9a-f]{6}$/i.test(color)) {
+        const boton = document.querySelector(`.color-btn[onclick*="${color}" i]`);
+        seleccionarColor(color, boton);
+      }
+      if (saved.volumen != null) {
+        document.getElementById('cfg-volumen').value = saved.volumen;
+        actualizarVolumen(saved.volumen);
+      }
+      if (saved.vozActiva != null) {
+        document.getElementById('cfg-voz-activa').checked = saved.vozActiva;
+        toggleVoz(saved.vozActiva);
+      }
+      if (saved.mostrarMascota != null) {
+        document.getElementById('cfg-mostrar').checked = saved.mostrarMascota;
+        toggleMostrar(saved.mostrarMascota);
+      }
+      MichiConfig.vozURI = saved.vozSeleccionada || '';
+      seleccionarVozGuardada();
     }
   </script>
 </body>

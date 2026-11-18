@@ -12,4 +12,6 @@ public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
     List<Categoria> findByRestauranteIdAndActivaTrueOrderByOrdenDisplayAsc(Long restauranteId);
 
     List<Categoria> findByRestauranteId(Long restauranteId);
+
+    boolean existsByRestauranteIdAndNombreIgnoreCase(Long restauranteId, String nombre);
 }

@@ -39,7 +39,7 @@ INSERT INTO usuarios (nombre, apellido, email, password, telefono, activo, role_
         'Admin',
         'MISHIKO',
         'admin@mishiko.com',
-        '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE1NBZwGM2jJIoH6',  -- bcrypt de 'admin123'
+        '$2a$10$QlgosNcx8lLRAsG7Luh7IOU3tQrLyqbz7.h6IeIbtA5YU6u6MQXia',  -- bcrypt de 'admin123'
         '+51 999 000 001',
         TRUE,
         (SELECT id FROM roles WHERE nombre = 'ADMIN')

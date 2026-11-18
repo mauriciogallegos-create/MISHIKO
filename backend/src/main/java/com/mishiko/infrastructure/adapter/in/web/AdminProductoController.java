@@ -8,7 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import com.mishiko.infrastructure.adapter.in.web.dto.CategoriaResponse;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +27,14 @@ import java.util.Map;
 public class AdminProductoController {
 
     private final ProductoUseCase productoUseCase;
+
+    public record CrearCategoria(@NotNull Long restauranteId, @NotBlank @Size(max = 100) String nombre) {}
+
+    @PostMapping("/categorias")
+    public ResponseEntity<CategoriaResponse> crearCategoria(@Valid @RequestBody CrearCategoria request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(productoUseCase.crearCategoria(request.restauranteId(), request.nombre()));
+    }
 
     @PostMapping("/productos")
     public ResponseEntity<ProductoResponse> crearProducto(@RequestBody Map<String, Object> body) {

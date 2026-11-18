@@ -7,29 +7,36 @@
 ### Prerequisitos
 - Java 21 (JetBrains JBR o similar)
 - Apache Maven 3.9+
-- XAMPP con MySQL corriendo
+- MySQL 8.0 o 8.4 corriendo
 - Node.js (opcional, solo para servidor de archivos estáticos)
 
 ### Pasos
 
-**1. Iniciar MySQL (XAMPP)**
-```
-Abrir XAMPP Control Panel → Iniciar MySQL
-```
+**1. Iniciar MySQL**
+
+Inicia el servicio local de MySQL 8.
 
 **2. Crear la base de datos**
 ```bash
 # Abrir MySQL desde phpMyAdmin o consola
 mysql -u root < database/mishiko_schema.sql
 mysql -u root mishiko_db < database/mishiko_data.sql
+mysql -u root mishiko_db < database/mishiko_jpa_alignment.sql
+mysql -u root mishiko_db < database/mishiko_pedido_idempotencia.sql
 ```
+
+En una base ya instalada, ejecuta una vez y en el orden indicado las migraciones
+`mishiko_jpa_alignment.sql` y `mishiko_pedido_idempotencia.sql` que todavía estén pendientes.
 
 **3. Iniciar el backend**
 ```bash
 cd backend
 mvn spring-boot:run
 ```
-El servidor queda en: `http://localhost:8080`
+El backend sirve también el frontend en `http://localhost:8080/api/index.html`.
+Desde esa página puedes generar el QR de una mesa. Para escanearlo con otro
+dispositivo, abre la portada usando una IP o un dominio accesible desde ese
+dispositivo. Usa la misma dirección al generar el QR.
 
 **4. Abrir el frontend**
 
@@ -95,7 +102,7 @@ MISHIKO/
 | GET | `/api/comprobantes/{id}/pdf` | Descargar PDF | No |
 | PUT | `/api/mascota/preferencias` | Guardar config Michi | Autenticado |
 
-**Documentación Swagger**: `http://localhost:8080/swagger-ui/index.html`
+**Documentación Swagger**: `http://localhost:8080/api/swagger-ui/index.html`
 
 ---
 

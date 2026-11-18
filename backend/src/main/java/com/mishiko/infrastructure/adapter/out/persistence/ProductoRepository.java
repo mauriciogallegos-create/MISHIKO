@@ -16,4 +16,6 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findByRestauranteIdAndNombreContainingIgnoreCase(Long restauranteId, String nombre);
 
     List<Producto> findByRestauranteId(Long restauranteId);
+
+    List<Producto> findByRestauranteIdAndCategoriaActivaTrueOrderByOrdenDisplayAscIdAsc(Long restauranteId);
 }

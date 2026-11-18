@@ -1,5 +1,6 @@
 # Maven
 backend/target/
+backend/uploads/
 **/target/
 pom.xml.tag
 pom.xml.releaseBackup

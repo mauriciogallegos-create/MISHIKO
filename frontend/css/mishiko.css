@@ -604,3 +604,5 @@ tbody tr:hover { background: #FFFAF8; }
   .container { padding: 0 1rem; }
   .btn-lg { padding: .75rem 1.5rem; font-size: 1rem; }
 }
+
+#btn-avisos[hidden] { display: none; }

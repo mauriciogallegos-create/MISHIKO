@@ -20,6 +20,7 @@
         <span id="ultima-actualizacion">En línea</span>
       </div>
       <button onclick="cargarPedidos()" style="background:rgba(255,107,53,0.2);color:#FF6B35;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.82rem">🔄 Actualizar</button>
+      <button type="button" id="btn-avisos" hidden>🔔 Activar notificaciones</button>
       <a href="../login.html" onclick="Auth.logout()" style="color:#94A3B8;font-size:0.82rem;text-decoration:none">Salir</a>
     </div>
   </nav>
@@ -137,8 +138,8 @@
         <div class="prod-cocina-item">
           <div class="prod-cant">${d.cantidad}</div>
           <div>
-            <div class="prod-nombre">${d.productoNombre}</div>
-            ${d.observaciones ? `<div class="prod-obs">⚠ ${d.observaciones}</div>` : ''}
+            <div class="prod-nombre">${escaparHtml(d.productoNombre)}</div>
+            ${d.observaciones ? `<div class="prod-obs">⚠ ${escaparHtml(d.observaciones)}</div>` : ''}
           </div>
         </div>`).join('');
 
@@ -155,7 +156,7 @@
             <div class="card-tiempo ${minutos > 20 ? 'urgente' : ''}">⏱ ${minutos}min</div>
           </div>
           <div class="card-productos">${productos}</div>
-          ${p.observaciones ? `<div class="card-obs">📝 ${p.observaciones}</div>` : ''}
+          ${p.observaciones ? `<div class="card-obs">📝 ${escaparHtml(p.observaciones)}</div>` : ''}
           <div class="card-acciones">${acciones}</div>
         </div>`;
     }
@@ -201,7 +202,7 @@
     }
 
     // Iniciar
-    Notifications.requestPermission();
+    Notifications.configurarBotonPermiso(document.getElementById('btn-avisos'));
     cargarPedidos();
     setInterval(cargarPedidos, 15000);
   </script>
