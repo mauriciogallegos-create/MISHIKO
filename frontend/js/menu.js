@@ -36,8 +36,15 @@ async function cargarMenu() {
   try {
     const data = await api.get(`/menu?restauranteId=${restauranteId}&mesa=${mesaNumero}`);
 
-    // Nombre del restaurante (podría agregarse un endpoint de restaurante)
-    document.getElementById('restaurante-nombre').textContent = 'MISHIKO Restaurant';
+    const restaurante = data.restaurante;
+    document.getElementById('restaurante-nombre').textContent = restaurante?.nombre || 'MISHIKO';
+    document.getElementById('restaurante-desc').textContent = restaurante?.descripcion || '';
+    const logo = document.getElementById('restaurante-logo');
+    if (restaurante?.logoUrl) {
+      logo.onload = () => { logo.hidden = false; };
+      logo.onerror = () => { logo.hidden = true; };
+      logo.src = restaurante.logoUrl;
+    }
 
     todosProductos = data.productos || [];
     renderCategorias(data.categorias || []);

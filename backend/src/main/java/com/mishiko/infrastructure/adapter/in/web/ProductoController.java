@@ -1,6 +1,7 @@
 package com.mishiko.infrastructure.adapter.in.web;
 
 import com.mishiko.application.usecase.ProductoUseCase;
+import com.mishiko.domain.model.Restaurante;
 import com.mishiko.infrastructure.adapter.in.web.dto.CategoriaResponse;
 import com.mishiko.infrastructure.adapter.in.web.dto.ProductoResponse;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,8 @@ import java.util.Map;
 public class ProductoController {
 
     private final ProductoUseCase productoUseCase;
+
+    public record RestauranteMenu(String nombre, String descripcion, String logoUrl) {}
 
     // ── Productos ──────────────────────────────────────────────────────────────
 
@@ -47,10 +50,12 @@ public class ProductoController {
     public ResponseEntity<Map<String, Object>> getMenu(
             @RequestParam(defaultValue = "1") Long restauranteId,
             @RequestParam(required = false) Integer mesa) {
+        Restaurante restaurante = productoUseCase.getRestauranteActivo(restauranteId);
         List<CategoriaResponse> categorias = productoUseCase.getCategoriasByRestaurante(restauranteId);
         List<ProductoResponse> productos = productoUseCase.getMenuPorCategoria(restauranteId);
         return ResponseEntity.ok(Map.of(
             "restauranteId", restauranteId,
+            "restaurante", new RestauranteMenu(restaurante.getNombre(), restaurante.getDescripcion(), restaurante.getLogoUrl()),
             "mesa", mesa != null ? mesa : 0,
             "categorias", categorias,
             "productos", productos

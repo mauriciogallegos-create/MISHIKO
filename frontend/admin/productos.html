@@ -133,7 +133,7 @@
   async function cargarDatos() {
     try {
       [productos, categorias] = await Promise.all([
-        api.get('/productos?restauranteId=1'),
+        api.get('/admin/productos?restauranteId=1', true),
         api.get('/categorias?restauranteId=1')
       ]);
       poblarSelectCategorias();

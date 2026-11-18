@@ -376,6 +376,13 @@
 }
 
 
+#restaurante-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: .5rem;
+}
+
 .michi-comandos {
   margin: .75rem 0 1rem;
 }

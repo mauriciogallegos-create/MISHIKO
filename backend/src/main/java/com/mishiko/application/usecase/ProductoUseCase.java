@@ -61,8 +61,15 @@ public class ProductoUseCase {
     }
 
     @Transactional(readOnly = true)
+    public Restaurante getRestauranteActivo(Long id) {
+        return restauranteRepository.findById(id)
+                .filter(restaurante -> Boolean.TRUE.equals(restaurante.getActivo()))
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurante", id));
+    }
+
+    @Transactional(readOnly = true)
     public List<ProductoResponse> getMenuPorCategoria(Long restauranteId) {
-        return productoRepository.findByRestauranteIdAndDisponibleTrue(restauranteId)
+        return productoRepository.findByRestauranteIdAndCategoriaActivaTrueOrderByOrdenDisplayAscIdAsc(restauranteId)
                 .stream()
                 .map(this::toProductoResponse)
                 .collect(Collectors.toList());
