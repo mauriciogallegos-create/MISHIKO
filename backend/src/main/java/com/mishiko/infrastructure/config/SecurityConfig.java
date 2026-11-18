@@ -61,6 +61,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/pedidos").permitAll()
                 .requestMatchers(HttpMethod.GET, "/pedidos/numero/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/pedidos/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/comprobantes/{pedidoId}", "/comprobantes/{pedidoId}/pdf").permitAll()
                 // Swagger UI
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 // Rutas de administración
