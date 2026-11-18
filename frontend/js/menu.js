@@ -10,6 +10,7 @@ let restauranteId = 1;
 let mesaId = null;
 let mesaNumero = 1;
 let pedidoConfirmadoId = null;
+let solicitudPendiente = null;
 
 // ── Inicialización ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -258,9 +259,9 @@ function cerrarModal(id) {
 // ── Confirmar Pedido ───────────────────────────────────────────────────────────
 async function confirmarPedido() {
   const items = Cart.get();
-  if (items.length === 0) return;
-
   const btn = document.getElementById('btn-confirmar');
+  if (items.length === 0 || btn.disabled) return;
+
   btn.disabled = true;
   btn.textContent = 'Enviando...';
 
@@ -284,7 +285,15 @@ async function confirmarPedido() {
   };
 
   try {
-    const pedido = await api.post('/pedidos', payload);
+    const detalleSolicitud = JSON.stringify(payload);
+    if (solicitudPendiente?.detalle !== detalleSolicitud) {
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      const id = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+      solicitudPendiente = { detalle: detalleSolicitud, id };
+    }
+    const pedido = await api.post('/pedidos', { ...payload, solicitudId: solicitudPendiente.id });
+    if (!pedido) return;
+    solicitudPendiente = null;
 
     pedidoConfirmadoId = pedido.id;
     document.getElementById('conf-numero').textContent = pedido.numeroPedido;

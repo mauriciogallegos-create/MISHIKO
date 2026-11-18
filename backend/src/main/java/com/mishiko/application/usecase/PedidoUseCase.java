@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,20 +34,27 @@ public class PedidoUseCase {
 
     @Transactional
     public PedidoResponse crearPedido(CrearPedidoRequest request) {
-        Mesa mesa = mesaRepository.findById(request.getMesaId())
+        Mesa mesa = mesaRepository.buscarParaCrearPedido(request.getMesaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Mesa", request.getMesaId()));
 
-        if (!mesa.getDisponible() || !mesa.getRestaurante().getId().equals(request.getRestauranteId())) {
+        if (!mesa.getRestaurante().getId().equals(request.getRestauranteId())) {
             throw new BadRequestException("La mesa no está disponible para este restaurante");
         }
-
-        // Generar número de pedido
-        String numeroPedido = generarNumeroPedido();
+        if (request.getSolicitudId() != null) {
+            var existente = pedidoRepository.findByMesaIdAndSolicitudId(mesa.getId(), request.getSolicitudId());
+            if (existente.isPresent()) {
+                return toPedidoResponse(existente.get());
+            }
+        }
+        if (!mesa.getDisponible()) {
+            throw new BadRequestException("La mesa no está disponible para este restaurante");
+        }
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
         Pedido pedido = Pedido.builder()
-                .numeroPedido(numeroPedido)
+                .numeroPedido("TMP" + UUID.randomUUID().toString().replace("-", "").substring(0, 17))
+                .solicitudId(request.getSolicitudId())
                 .estado(EstadoPedidoEnum.PENDIENTE)
                 .nombreCliente(request.getNombreCliente())
                 .observaciones(request.getObservaciones())
@@ -99,7 +107,9 @@ public class PedidoUseCase {
         pedido.getHistorialEstados().add(estadoInicial);
 
         Pedido saved = pedidoRepository.save(pedido);
-        log.info("Pedido creado: {} para mesa {}", numeroPedido, mesa.getNumero());
+        // El identificador asignado por MySQL evita colisiones entre mesas concurrentes.
+        saved.setNumeroPedido("PED-" + Long.toUnsignedString(saved.getId(), 36).toUpperCase(Locale.ROOT));
+        log.info("Pedido creado: {} para mesa {}", saved.getNumeroPedido(), mesa.getNumero());
         return toPedidoResponse(saved);
     }
 
@@ -174,12 +184,6 @@ public class PedidoUseCase {
                 .stream()
                 .map(this::toPedidoResponse)
                 .collect(Collectors.toList());
-    }
-
-    private String generarNumeroPedido() {
-        Long maxNum = pedidoRepository.findMaxNumeroPedido();
-        long siguiente = (maxNum != null ? maxNum : 0L) + 1;
-        return String.format("PED%06d", siguiente);
     }
 
     public PedidoResponse toPedidoResponse(Pedido p) {

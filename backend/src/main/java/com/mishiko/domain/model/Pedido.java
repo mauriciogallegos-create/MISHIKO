@@ -25,6 +25,9 @@ public class Pedido {
     @Column(name = "numero_pedido", nullable = false, unique = true, length = 20)
     private String numeroPedido;
 
+    @Column(name = "solicitud_id", columnDefinition = "CHAR(32)")
+    private String solicitudId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default

@@ -22,10 +22,11 @@ Inicia el servicio local de MySQL 8.
 mysql -u root < database/mishiko_schema.sql
 mysql -u root mishiko_db < database/mishiko_data.sql
 mysql -u root mishiko_db < database/mishiko_jpa_alignment.sql
+mysql -u root mishiko_db < database/mishiko_pedido_idempotencia.sql
 ```
 
-En una base creada previamente con los dos scripts originales, aplica únicamente
-`mishiko_jpa_alignment.sql` una vez.
+En una base ya instalada, ejecuta una vez y en el orden indicado las migraciones
+`mishiko_jpa_alignment.sql` y `mishiko_pedido_idempotencia.sql` que todavía estén pendientes.
 
 **3. Iniciar el backend**
 ```bash

@@ -30,6 +30,5 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Query("SELECT p FROM Pedido p WHERE p.id = :id")
     Optional<Pedido> buscarParaActualizarEstado(@Param("id") Long id);
 
-    @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(p.numeroPedido, 4) AS long)), 0) FROM Pedido p WHERE p.numeroPedido LIKE 'PED%'")
-    Long findMaxNumeroPedido();
+    Optional<Pedido> findByMesaIdAndSolicitudId(Long mesaId, String solicitudId);
 }
