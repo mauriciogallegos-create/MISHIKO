@@ -109,6 +109,7 @@
         </div>
 
         <div class="acciones-seguimiento">
+          <button type="button" id="btn-avisos" class="btn btn-secondary" hidden>Activar notificaciones</button>
           <button class="btn btn-secondary" onclick="buscarPedido()" style="font-size:0.85rem">🔄 Actualizar</button>
           <a id="btn-ir-comprobante" href="#" class="btn btn-primary" style="font-size:0.85rem">📄 Ver Comprobante</a>
         </div>
@@ -163,12 +164,15 @@
 
       try {
         const pedido = await api.get(`/pedidos/numero/${numero}`);
+        if (pedido.estado !== pedidoActual?.estado || pedido.id !== pedidoActual?.id) {
+          Notifications.notificarEstadoPedido(pedido.estado, pedido.numeroPedido);
+        }
         pedidoActual = pedido;
         renderPedido(pedido);
+        clearInterval(intervaloActualizacion);
 
         // Polling automático si pedido activo
         if (!['ENTREGADO','CANCELADO'].includes(pedido.estado)) {
-          clearInterval(intervaloActualizacion);
           intervaloActualizacion = setInterval(actualizarEstado, 15000);
         }
       } catch (err) {
@@ -231,8 +235,9 @@
       document.getElementById('res-total').textContent    = `S/ ${parseFloat(p.total||0).toFixed(2)}`;
       document.getElementById('btn-ir-comprobante').href  = `comprobante.html?pedidoId=${p.id}`;
 
-      Notifications.requestPermission();
     }
+
+    Notifications.configurarBotonPermiso(document.getElementById('btn-avisos'));
   </script>
 </body>
 </html>
