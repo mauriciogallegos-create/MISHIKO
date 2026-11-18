@@ -57,7 +57,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/menu/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/*.html", "/admin/*.html", "/cocina/*.html", "/mascota/*.html", "/css/**", "/js/**", "/assets/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/menu/**", "/mesas/{id}/qr").permitAll()
                 .requestMatchers(HttpMethod.GET, "/productos/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/categorias/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/pedidos").permitAll()

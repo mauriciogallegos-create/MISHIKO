@@ -32,7 +32,10 @@ En una base creada previamente con los dos scripts originales, aplica únicament
 cd backend
 mvn spring-boot:run
 ```
-El servidor queda en: `http://localhost:8080`
+El backend sirve también el frontend en `http://localhost:8080/api/index.html`.
+Desde esa página puedes generar el QR de una mesa. Para escanearlo con otro
+dispositivo, abre la portada usando una IP o un dominio accesible desde ese
+dispositivo. Usa la misma dirección al generar el QR.
 
 **4. Abrir el frontend**
 

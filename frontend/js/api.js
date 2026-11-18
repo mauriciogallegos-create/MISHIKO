@@ -3,7 +3,9 @@
  * Wrapper sobre fetch con manejo de JWT y errores
  */
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = window.location.pathname.startsWith('/api/')
+  ? `${window.location.origin}/api`
+  : 'http://localhost:8080/api';
 
 function escaparHtml(valor) {
   const entidades = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
