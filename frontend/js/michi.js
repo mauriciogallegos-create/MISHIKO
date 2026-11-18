@@ -11,7 +11,8 @@ const MichiConfig = {
   nombre:     'Michi',
   vozActiva:  true,
   volumen:    0.9,
-  mostrar:    true
+  mostrar:    true,
+  vozURI:     ''
 };
 
 // ═══════════════════════════════════════════════════════
@@ -29,7 +30,7 @@ function initMichi3D(canvasId = 'michi-canvas') {
   // Cargar Three.js dinámicamente si no está cargado
   if (typeof THREE === 'undefined') {
     const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
     script.onload = () => buildMichiScene(canvas);
     document.head.appendChild(script);
   } else {
@@ -197,13 +198,16 @@ function animateMichi() {
 function cambiarColorMichi(hexColor) {
   MichiConfig.color = hexColor;
   if (michiGroup) {
-    // Reconstruir modelo con nuevo color
-    if (michiScene) michiScene.remove(michiGroup);
-    const canvas = document.getElementById('michi-canvas');
-    if (canvas) {
-      michiGroup = buildMichiModel();
-      michiScene.add(michiGroup);
-    }
+    const anterior = michiGroup;
+    michiGroup = buildMichiModel();
+    michiGroup.position.copy(anterior.position);
+    michiGroup.rotation.copy(anterior.rotation);
+    michiScene.remove(anterior);
+    michiScene.add(michiGroup);
+    anterior.traverse(objeto => {
+      objeto.geometry?.dispose();
+      objeto.material?.dispose();
+    });
   }
 }
 
@@ -219,7 +223,6 @@ function toggleMichi() {
 // VOZ – SpeechSynthesis API
 // ═══════════════════════════════════════════════════════
 let vozSynth = window.speechSynthesis || null;
-let vozSeleccionada = null;
 let vozesDisponibles = [];
 
 function cargarVoces() {
@@ -264,8 +267,8 @@ function michiHabla(texto, forzar = false) {
   utterance.rate   = 1.0;
   utterance.pitch  = 1.1;
 
-  if (vozSeleccionada) utterance.voice = vozSeleccionada;
-  else if (vozesDisponibles.length > 0) utterance.voice = vozesDisponibles[0];
+  const voz = vozesDisponibles.find(v => v.voiceURI === MichiConfig.vozURI) || vozesDisponibles[0];
+  if (voz) utterance.voice = voz;
 
   vozSynth.speak(utterance);
 }

@@ -2,7 +2,6 @@ package com.mishiko.infrastructure.adapter.in.web;
 
 import com.mishiko.domain.model.PreferenciasMascota;
 import com.mishiko.domain.model.Usuario;
-import com.mishiko.infrastructure.adapter.in.web.dto.AuthRequest;
 import com.mishiko.infrastructure.adapter.out.persistence.PreferenciasMascotaRepository;
 import com.mishiko.infrastructure.adapter.out.persistence.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/mascota")
@@ -30,6 +30,7 @@ public class MascotaController {
                 "nombreMascota", "Michi",
                 "colorPelaje", "naranja",
                 "vozActiva", true,
+                "vozSeleccionada", "",
                 "volumen", 0.9,
                 "mostrarMascota", true
             ));
@@ -51,6 +52,7 @@ public class MascotaController {
             "nombreMascota",  prefs.getNombreMascota(),
             "colorPelaje",    prefs.getColorPelaje(),
             "vozActiva",      prefs.getVozActiva(),
+            "vozSeleccionada", Objects.toString(prefs.getVozSeleccionada(), ""),
             "volumen",        prefs.getVolumen(),
             "mostrarMascota", prefs.getMostrarMascota()
         ));
@@ -74,6 +76,13 @@ public class MascotaController {
         if (body.containsKey("vozActiva"))      prefs.setVozActiva(Boolean.parseBoolean(body.get("vozActiva").toString()));
         if (body.containsKey("volumen"))        prefs.setVolumen(new BigDecimal(body.get("volumen").toString()));
         if (body.containsKey("mostrarMascota")) prefs.setMostrarMascota(Boolean.parseBoolean(body.get("mostrarMascota").toString()));
+        if (body.containsKey("vozSeleccionada")) {
+            String voz = Objects.toString(body.get("vozSeleccionada"), "").trim();
+            if (voz.length() > 100) {
+                throw new BadRequestException("La voz seleccionada no puede superar 100 caracteres");
+            }
+            prefs.setVozSeleccionada(voz.isEmpty() ? null : voz);
+        }
 
         prefRepository.save(prefs);
         return ResponseEntity.ok(Map.of("mensaje", "Preferencias guardadas correctamente"));
