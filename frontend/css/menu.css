@@ -217,6 +217,16 @@
 .btn-carrito:hover { background: var(--primary-dark); }
 
 /* Carrito Panel */
+#overlay-carrito {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 499;
+}
+
+#overlay-carrito.active { display: block; }
+
 .carrito-panel {
   position: fixed;
   right: 0;
