@@ -34,6 +34,12 @@ backend/data/
 *.mv.db
 *.trace.db
 
+# Node / Frontend
+node_modules/
+**/node_modules/
+app_src/dist/
+.vite/
+
 # OS files
 Desktop.ini
 $RECYCLE.BIN/

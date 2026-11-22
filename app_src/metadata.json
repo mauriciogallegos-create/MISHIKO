@@ -1,0 +1,6 @@
+{
+  "name": "MISHIKO Smart Dining OS",
+  "description": "Plataforma gastronómica inteligente con menú QR en vivo, asistente Michi AI por voz, pantalla de cocina KDS, gestión de mesas y control de acceso.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
