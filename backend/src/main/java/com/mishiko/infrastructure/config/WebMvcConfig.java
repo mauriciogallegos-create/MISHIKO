@@ -2,7 +2,9 @@ package com.mishiko.infrastructure.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -13,6 +15,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Value("${mishiko.upload.dir}")
     private String uploadDir;
+
+    @Override
+    public void configurePathMatch(PathMatchConfigurer configurer) {
+        configurer.addPathPrefix("/api", c -> c.isAnnotationPresent(RestController.class));
+    }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -32,9 +39,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String ubicacion = Path.of(uploadDir).toAbsolutePath().normalize().toUri().toString();
-        registry.addResourceHandler("/uploads/**")
+        registry.addResourceHandler("/uploads/**", "/api/uploads/**")
                 .addResourceLocations(ubicacion.endsWith("/") ? ubicacion : ubicacion + "/");
-        registry.addResourceHandler("/**")
+        registry.addResourceHandler("/**", "/api/*.html", "/api/*/*.html", "/api/assets/**", "/api/src/**")
                 .addResourceLocations("classpath:/static/");
     }
 }

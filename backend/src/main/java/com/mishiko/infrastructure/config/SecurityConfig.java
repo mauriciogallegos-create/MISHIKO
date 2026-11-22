@@ -57,23 +57,24 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas
-                .requestMatchers("/auth/**", "/h2-console/**", "/mascota/**", "/michi/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/*.html", "/admin/*.html", "/cocina/*.html", "/mascota/*.html", "/css/**", "/js/**", "/assets/**", "/uploads/**", "/src/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/menu/**", "/mesas", "/mesas/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/productos/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/categorias/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/pedidos").permitAll()
-                .requestMatchers(HttpMethod.GET, "/pedidos/numero/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/pedidos/{id}").permitAll()
-                .requestMatchers(HttpMethod.GET, "/comprobantes/{pedidoId}", "/comprobantes/{pedidoId}/pdf").permitAll()
+                .requestMatchers("/auth/**", "/api/auth/**", "/h2-console/**", "/api/h2-console/**", "/mascota/**", "/api/mascota/**", "/michi/**", "/api/michi/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/", "/index.html", "/*.html", "/*/*.html", "/css/**", "/js/**", "/assets/**", "/uploads/**", "/src/**",
+                        "/api/*.html", "/api/*/*.html", "/api/css/**", "/api/js/**", "/api/assets/**", "/api/uploads/**", "/api/src/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/menu/**", "/api/menu/**", "/mesas", "/api/mesas", "/mesas/**", "/api/mesas/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/productos/**", "/api/productos/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/categorias/**", "/api/categorias/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/pedidos", "/api/pedidos").permitAll()
+                .requestMatchers(HttpMethod.GET, "/pedidos/numero/**", "/api/pedidos/numero/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/pedidos/{id}", "/api/pedidos/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/comprobantes/**", "/api/comprobantes/**").permitAll()
                 // Swagger UI
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 // Rutas de administración
-                .requestMatchers("/admin/**").hasAnyRole("ADMIN")
+                .requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN")
                 // Rutas de cocina
-                .requestMatchers("/cocina/**").hasAnyRole("COCINA", "ADMIN")
+                .requestMatchers("/cocina/**", "/api/cocina/**").hasAnyRole("COCINA", "ADMIN")
                 // Actualización de estado de pedido
-                .requestMatchers(HttpMethod.PUT, "/pedidos/*/estado").hasAnyRole("PERSONAL", "COCINA", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/pedidos/*/estado", "/api/pedidos/*/estado").hasAnyRole("PERSONAL", "COCINA", "ADMIN")
                 // Todo lo demás requiere autenticación
                 .anyRequest().authenticated()
             )
