@@ -767,14 +767,22 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       )}
 
       {/* VISTA 2: APARIENCIA */}
-      {subView === 'apariencia' && (
+      {subView === 'apariencia' && (() => {
+        const draftColorKey = (draftConfig.furColor || 'Naranja').toLowerCase();
+        const draftOutfitKey = (draftConfig.outfit || 'Corbatín')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const draftSpriteImg = `./assets/michi/michi-${draftColorKey}-${draftOutfitKey}.png`;
+
+        return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-8 flex flex-col items-center text-center space-y-4">
-            <div className="w-48 h-48 mx-auto flex items-center justify-center">
+            <div className="w-52 h-52 mx-auto flex items-center justify-center p-2 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 shadow-inner">
               <img
-                src={draftConfig.furColor === 'Blanco' ? michiImages.hembra.saludo : michiImages.macho.saludo}
+                src={draftSpriteImg}
                 alt={draftConfig.name}
-                className="w-full h-full object-contain filter drop-shadow-md"
+                className="w-full h-full object-contain filter drop-shadow-md transition-transform hover:scale-105"
               />
             </div>
             <div>
@@ -782,13 +790,13 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                 {draftConfig.name}
               </h2>
               <p className="text-xs text-stone-500 mt-1">
-                {draftConfig.furColor === 'Blanco' ? 'Gata Michita · Atuendo ' + draftConfig.outfit : 'Gato Michi · Atuendo ' + draftConfig.outfit}
+                {draftConfig.furColor} · Atuendo {draftConfig.outfit}
               </p>
             </div>
             <button
               type="button"
               onClick={handleSaveAppearance}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#9E3304] hover:bg-[#822802] text-white text-xs font-bold"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#9E3304] hover:bg-[#822802] text-white text-xs font-bold shadow-md transition-colors"
             >
               <Save className="w-4 h-4" />
               <span>Guardar Apariencia</span>
@@ -844,7 +852,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
             </div>
           </div>
         </div>
-      )}
+      ); })()}
 
       {/* VISTA 3: GESTOS & LAB */}
       {subView === 'gestos' && (

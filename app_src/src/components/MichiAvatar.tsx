@@ -62,10 +62,12 @@ export const MichiAvatar: React.FC<MichiAvatarProps> = ({
         ? 'w-16 h-16'
         : 'w-32 h-32';
 
-  const avatarImg =
-    config.furColor === 'Blanco'
-      ? './assets/michi/michi-hembra-saludo.png'
-      : './assets/michi/michi-macho-saludo.png';
+  const colorKey = (config.furColor || 'Naranja').toLowerCase();
+  const outfitKey = (config.outfit || 'Corbatín')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const avatarImg = `./assets/michi/michi-${colorKey}-${outfitKey}.png`;
 
   return (
     <div className="relative inline-flex flex-col items-center shrink-0">
