@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# IDE & Editor
+.idea
+.vscode
+*.iml
+.DS_Store
+Thumbs.db
+
+# Node / Vite
+app_src/node_modules
+app_src/.vite
+app_src/dist
+
+# Maven / Java
+backend/target
+target
+*.class
+
+# Base de datos y subidas locales
+data/
+backend/data/
+uploads/
+backend/uploads/
+*.log

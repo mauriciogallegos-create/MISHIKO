@@ -1,8 +1,37 @@
-# 🐱 MISHIKO – Sistema de Pedidos para Restaurantes
+# 🐱 MISHIKO – Sistema Gastronómico Inteligente & Smart Dining OS
 
-> Plataforma web para digitalizar la gestión de pedidos mediante menú QR, panel administrativo, consola de cocina y mascota virtual Michi 3D.
+> Plataforma web para digitalizar la gestión integral de pedidos mediante menú QR en vivo, asistente Michi AI por voz, pantalla de cocina KDS multi-laptop y control administrativo.
 
-## 🚀 Inicio Rápido
+---
+
+## 🐳 Ejecución Inmediata con Docker (Para Compañeros de Universidad y Docentes)
+
+No necesitas tener instalado Java, Node ni Maven en tu computadora. Con **Docker Desktop** activo, solo ejecuta:
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/mauriciogallegos-create/MISHIKO.git
+cd MISHIKO
+
+# 2. Construir y levantar el contenedor
+docker compose up --build
+```
+
+¡Y listo! Abre tu navegador en:
+👉 **http://localhost:8080**
+
+* **Menú Comensal y Michi AI**: `http://localhost:8080/index.html`
+* **Pantalla de Cocina KDS**: `http://localhost:8080/index.html` → pestaña **Operación OS** → **Cocina KDS**
+* **Base de datos**: Incluida de forma embebida y persistente (H2/MySQL mode) dentro del contenedor.
+
+Para detener el contenedor:
+```bash
+docker compose down
+```
+
+---
+
+## 🚀 Inicio Manual (Sin Docker)
 
 ### Prerequisitos
 - Java 21 (JetBrains JBR o similar)
