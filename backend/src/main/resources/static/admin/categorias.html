@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISHIKO Admin – Categorías</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/mishiko.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <style>
+    .cat-admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+    .cat-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border: 1px solid #edf2f7;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+    .cat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+    .cat-icon {
+      font-size: 2rem;
+      background: #FFF5F0;
+      color: var(--primary);
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+    }
+    .cat-titulo {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin: 0.4rem 0 0.2rem;
+    }
+    .cat-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      min-height: 2.2rem;
+      line-height: 1.3;
+      margin-bottom: 0.75rem;
+    }
+    .cat-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 0.6rem 0;
+      border-top: 1px dashed #edf2f7;
+      border-bottom: 1px dashed #edf2f7;
+      margin-bottom: 0.85rem;
+    }
+    .cat-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .cat-actions .btn {
+      flex: 1;
+      padding: 0.45rem 0.5rem;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+    .badge-activa {
+      background: #E6F4EA;
+      color: #137333;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-inactiva {
+      background: #F1F3F4;
+      color: #5F6368;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><img src="../assets/logo.png" alt="MISHIKO" style="height:36px;object-fit:contain"></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html">📊 Dashboard</a>
+      <a href="productos.html">🍽 Productos</a>
+      <a href="categorias.html" class="active">📂 Categorías</a>
+      <a href="pedidos.html">📋 Pedidos</a>
+      <a href="mesas.html">🪑 Mesas</a>
+      <a href="../cocina/consola.html">👨‍🍳 Cocina</a>
+    </nav>
+    <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.1)">
+      <div style="font-size:0.82rem;color:rgba(255,255,255,0.6);margin-bottom:0.5rem" id="user-info">-</div>
+      <button onclick="Auth.logout()" class="btn" style="background:rgba(255,107,53,0.2);color:#FF6B35;width:100%;font-size:0.82rem">Cerrar Sesión</button>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <h2 style="font-size:1.1rem;font-weight:600">📂 Gestión de Categorías</h2>
+      <button class="btn btn-primary" onclick="abrirModalNueva()">+ Nueva Categoría</button>
+    </div>
+
+    <div class="admin-content">
+      <div class="filter-bar">
+        <input type="text" id="buscar" placeholder="🔍 Buscar categoría..." oninput="filtrarCategorias()">
+        <select id="filtro-activa" onchange="filtrarCategorias()">
+          <option value="">Todas</option>
+          <option value="true">Activas</option>
+          <option value="false">Inactivas</option>
+        </select>
+      </div>
+
+      <div id="loading-cats" class="loading-container"><div class="spinner"></div><p>Cargando categorías...</p></div>
+      <div id="categorias-grid" class="cat-admin-grid" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Crear / Editar Categoría -->
+<div id="modal-categoria" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="modal-titulo">Nueva Categoría</h3>
+      <button class="btn-cerrar" onclick="cerrarModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cat-id">
+      <div class="form-group">
+        <label class="form-label">Nombre de la Categoría *</label>
+        <input type="text" id="cat-nombre" class="form-control" placeholder="Ej: Bebidas Frías, Postres..." maxlength="100" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <textarea id="cat-desc" class="form-control" rows="2" placeholder="Breve detalle de la categoría..."></textarea>
+      </div>
+      <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label class="form-label">Orden de Visualización</label>
+          <input type="number" id="cat-orden" class="form-control" value="0" min="0">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;padding-top:1.8rem">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem">
+            <input type="checkbox" id="cat-activa" checked>
+            <span>Categoría Activa</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar" onclick="guardarCategoria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Eliminar -->
+<div id="modal-eliminar" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-body" style="text-align:center;padding:2rem">
+      <div style="font-size:2.5rem;margin-bottom:1rem">🗑️</div>
+      <h3>¿Eliminar categoría?</h3>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-top:0.5rem" id="eliminar-mensaje">Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-secondary" onclick="cerrarModalEliminar()">Cancelar</button>
+      <button class="btn btn-danger" id="btn-confirmar-eliminar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/notifications.js"></script>
+<script>
+  if (!Auth.requireRole(['ADMIN'])) {
+    // Redirige automáticamente
+  }
+
+  const usuario = Auth.getUser();
+  if (usuario) {
+    document.getElementById('user-info').textContent = `${usuario.nombre} (${usuario.role})`;
+  }
+
+  let categorias = [];
+  let categoriaAEliminar = null;
+
+  async function cargarCategorias() {
+    try {
+      categorias = await api.get('/admin/categorias?restauranteId=1', true) || [];
+      document.getElementById('loading-cats').style.display = 'none';
+      document.getElementById('categorias-grid').style.display = 'grid';
+      renderizarCategorias(categorias);
+    } catch (error) {
+      document.getElementById('loading-cats').innerHTML = `<p style="color:var(--error)">Error al cargar categorías: ${escaparHtml(error.message)}</p>`;
+    }
+  }
+
+  function filtrarCategorias() {
+    const q = document.getElementById('buscar').value.toLowerCase().trim();
+    const activaFiltro = document.getElementById('filtro-activa').value;
+
+    let res = categorias;
+    if (q) {
+      res = res.filter(c => c.nombre.toLowerCase().includes(q) || (c.descripcion && c.descripcion.toLowerCase().includes(q)));
+    }
+    if (activaFiltro !== '') {
+      const b = activaFiltro === 'true';
+      res = res.filter(c => Boolean(c.activa) === b);
+    }
+    renderizarCategorias(res);
+  }
+
+  function renderizarCategorias(lista) {
+    const grid = document.getElementById('categorias-grid');
+    if (!lista || lista.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted)">No se encontraron categorías.</div>';
+      return;
+    }
+
+    grid.innerHTML = lista.map(c => `
+      <div class="cat-card">
+        <div>
+          <div class="cat-header">
+            <div class="cat-icon">📂</div>
+            <span class="${c.activa ? 'badge-activa' : 'badge-inactiva'}">${c.activa ? '● Activa' : '● Inactiva'}</span>
+          </div>
+          <h3 class="cat-titulo">${escaparHtml(c.nombre)}</h3>
+          <p class="cat-desc">${c.descripcion ? escaparHtml(c.descripcion) : '<em>Sin descripción</em>'}</p>
+          <div class="cat-meta">
+            <span>📦 <strong>${c.cantidadProductos || 0}</strong> productos</span>
+            <span>🔢 Orden: <strong>${c.ordenDisplay || 0}</strong></span>
+          </div>
+        </div>
+        <div class="cat-actions">
+          <button class="btn btn-secondary" onclick="toggleEstado(${c.id})" title="${c.activa ? 'Desactivar' : 'Activar'}">
+            ${c.activa ? '⏸ Pausar' : '▶ Activar'}
+          </button>
+          <button class="btn btn-secondary" onclick="abrirModalEditar(${c.id})">✏️ Editar</button>
+          <button class="btn btn-danger" onclick="abrirModalEliminar(${c.id}, '${escaparHtml(c.nombre)}', ${c.cantidadProductos || 0})">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function abrirModalNueva() {
+    document.getElementById('modal-titulo').textContent = 'Nueva Categoría';
+    document.getElementById('cat-id').value = '';
+    document.getElementById('cat-nombre').value = '';
+    document.getElementById('cat-desc').value = '';
+    document.getElementById('cat-orden').value = categorias.length;
+    document.getElementById('cat-activa').checked = true;
+    document.getElementById('modal-categoria').style.display = 'flex';
+    document.getElementById('cat-nombre').focus();
+  }
+
+  function abrirModalEditar(id) {
+    const c = categorias.find(cat => cat.id === id);
+    if (!c) return;
+
+    document.getElementById('modal-titulo').textContent = 'Editar Categoría';
+    document.getElementById('cat-id').value = c.id;
+    document.getElementById('cat-nombre').value = c.nombre;
+    document.getElementById('cat-desc').value = c.descripcion || '';
+    document.getElementById('cat-orden').value = c.ordenDisplay || 0;
+    document.getElementById('cat-activa').checked = Boolean(c.activa);
+    document.getElementById('modal-categoria').style.display = 'flex';
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-categoria').style.display = 'none';
+  }
+
+  async function guardarCategoria() {
+    const nombre = document.getElementById('cat-nombre').value.trim();
+    if (!nombre) {
+      mostrarToast('Ingresa el nombre de la categoría', 'warning');
+      return;
+    }
+
+    const id = document.getElementById('cat-id').value;
+    const body = {
+      nombre,
+      descripcion: document.getElementById('cat-desc').value.trim() || null,
+      ordenDisplay: parseInt(document.getElementById('cat-orden').value) || 0,
+      activa: document.getElementById('cat-activa').checked,
+      restauranteId: 1
+    };
+
+    const btn = document.getElementById('btn-guardar');
+    btn.disabled = true;
+
+    try {
+      if (id) {
+        await api.put(`/admin/categorias/${id}`, body, true);
+        mostrarToast('Categoría actualizada correctamente', 'success');
+      } else {
+        await api.post('/admin/categorias', body, true);
+        mostrarToast('Categoría creada exitosamente', 'success');
+      }
+      cerrarModal();
+      await cargarCategorias();
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function toggleEstado(id) {
+    try {
+      await api.patch(`/admin/categorias/${id}/toggle`, null, true);
+      mostrarToast('Estado de categoría actualizado', 'success');
+      await cargarCategorias();
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    }
+  }
+
+  function abrirModalEliminar(id, nombre, prods) {
+    categoriaAEliminar = id;
+    const msg = prods > 0
+      ? `La categoría "${nombre}" contiene <strong>${prods}</strong> producto(s). Si continúas, debes reasignar o desactivar los productos primero.`
+      : `¿Estás seguro de que deseas eliminar la categoría "${nombre}"?`;
+    document.getElementById('eliminar-mensaje').innerHTML = msg;
+    document.getElementById('btn-confirmar-eliminar').onclick = confirmarEliminar;
+    document.getElementById('modal-eliminar').style.display = 'flex';
+  }
+
+  function cerrarModalEliminar() {
+    document.getElementById('modal-eliminar').style.display = 'none';
+    categoriaAEliminar = null;
+  }
+
+  async function confirmarEliminar() {
+    if (!categoriaAEliminar) return;
+    try {
+      await api.delete(`/admin/categorias/${categoriaAEliminar}`, true);
+      mostrarToast('Categoría eliminada', 'success');
+      cerrarModalEliminar();
+      await cargarCategorias();
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', cargarCategorias);
+</script>
+</body>
+</html>

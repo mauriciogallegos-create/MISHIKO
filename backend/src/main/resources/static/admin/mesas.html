@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MISHIKO Admin – Mesas y Códigos QR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/mishiko.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <style>
+    .mesas-admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .mesa-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border: 1px solid #edf2f7;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .mesa-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+    .mesa-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .mesa-numero {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .mesa-qr-container {
+      text-align: center;
+      background: #FFF8F5;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 2px dashed rgba(255,107,53,0.3);
+      margin-bottom: 1rem;
+    }
+    .mesa-qr-img {
+      width: 140px;
+      height: 140px;
+      display: block;
+      margin: 0 auto;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .mesa-info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+    .mesa-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .mesa-actions .btn {
+      padding: 0.45rem 0.5rem;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .btn-full {
+      grid-column: 1 / -1;
+    }
+    .badge-disp {
+      background: #E6F4EA;
+      color: #137333;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-ocup {
+      background: #FCE8E6;
+      color: #C5221F;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    /* Estilos para impresión de QR */
+    @media print {
+      body * { visibility: hidden; }
+      #printable-qr, #printable-qr * { visibility: visible; }
+      #printable-qr {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: white;
+      }
+    }
+    .print-sheet {
+      text-align: center;
+      padding: 2rem;
+      border: 3px solid #FF6B35;
+      border-radius: 20px;
+      max-width: 380px;
+      margin: 0 auto;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><img src="../assets/logo.png" alt="MISHIKO" style="height:36px;object-fit:contain"></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html">📊 Dashboard</a>
+      <a href="productos.html">🍽 Productos</a>
+      <a href="categorias.html">📂 Categorías</a>
+      <a href="pedidos.html">📋 Pedidos</a>
+      <a href="mesas.html" class="active">🪑 Mesas</a>
+      <a href="../cocina/consola.html">👨‍🍳 Cocina</a>
+    </nav>
+    <div style="padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.1)">
+      <div style="font-size:0.82rem;color:rgba(255,255,255,0.6);margin-bottom:0.5rem" id="user-info">-</div>
+      <button onclick="Auth.logout()" class="btn" style="background:rgba(255,107,53,0.2);color:#FF6B35;width:100%;font-size:0.82rem">Cerrar Sesión</button>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <h2 style="font-size:1.1rem;font-weight:600">🪑 Gestión de Mesas y Códigos QR</h2>
+      <button class="btn btn-primary" onclick="abrirModalNueva()">+ Nueva Mesa</button>
+    </div>
+
+    <div class="admin-content">
+      <!-- Estadísticas rápidas -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));margin-bottom:1.5rem">
+        <div class="stat-card">
+          <div class="stat-icon">🪑</div>
+          <div class="stat-info"><strong id="stat-total-mesas">0</strong><span>Total Mesas</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🟢</div>
+          <div class="stat-info"><strong id="stat-mesas-disp">0</strong><span>Disponibles</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔴</div>
+          <div class="stat-info"><strong id="stat-mesas-nodisp">0</strong><span>No disponibles</span></div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="buscar" placeholder="🔍 Buscar por número o ubicación..." oninput="filtrarMesas()">
+        <select id="filtro-disp" onchange="filtrarMesas()">
+          <option value="">Todas</option>
+          <option value="true">Disponibles</option>
+          <option value="false">No disponibles</option>
+        </select>
+      </div>
+
+      <div id="loading-mesas" class="loading-container"><div class="spinner"></div><p>Cargando mesas...</p></div>
+      <div id="mesas-grid" class="mesas-admin-grid" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Crear / Editar Mesa -->
+<div id="modal-mesa" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h3 id="modal-titulo">Nueva Mesa</h3>
+      <button class="btn-cerrar" onclick="cerrarModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mesa-id">
+      <div class="form-group">
+        <label class="form-label">Número de Mesa *</label>
+        <input type="number" id="mesa-numero" class="form-control" placeholder="Ej: 5" min="1" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ubicación / Descripción</label>
+        <input type="text" id="mesa-desc" class="form-control" placeholder="Ej: Terraza, Salón Principal, Segundo Piso..." maxlength="50">
+      </div>
+      <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label class="form-label">Capacidad (personas)</label>
+          <input type="number" id="mesa-capacidad" class="form-control" value="4" min="1" max="20">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;padding-top:1.8rem">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem">
+            <input type="checkbox" id="mesa-disponible" checked>
+            <span>Disponible</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-mesa" onclick="guardarMesa()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Visualizar / Imprimir QR -->
+<div id="modal-imprimir-qr" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:420px;text-align:center">
+    <div class="modal-header">
+      <h3>Código QR para Mesa</h3>
+      <button class="btn-cerrar" onclick="cerrarModalQr()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="print-sheet" id="printable-qr">
+        <div style="font-size:1.8rem;margin-bottom:0.3rem">🐱 <strong>MISHIKO</strong></div>
+        <p style="color:#718096;font-size:0.85rem;margin-bottom:1rem">Menú Digital & Atención Inteligente</p>
+        <div style="font-size:1.4rem;font-weight:700;color:#FF6B35;margin-bottom:0.75rem" id="qr-titulo-mesa">Mesa #1</div>
+        <img id="qr-imagen-modal" src="" alt="QR Mesa" style="width:200px;height:200px;margin:0 auto 1rem;display:block;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.1)">
+        <p style="font-size:0.85rem;color:#2D3748;font-weight:500">Escanea con tu celular para consultar el menú y ordenar con <strong>Michi</strong></p>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:center;gap:0.75rem">
+      <button class="btn btn-secondary" onclick="cerrarModalQr()">Cerrar</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir QR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Eliminar -->
+<div id="modal-eliminar" class="modal-overlay" style="display:none">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-body" style="text-align:center;padding:2rem">
+      <div style="font-size:2.5rem;margin-bottom:1rem">🗑️</div>
+      <h3>¿Eliminar mesa?</h3>
+      <p style="color:var(--text-muted);font-size:0.88rem;margin-top:0.5rem" id="eliminar-mensaje">Esta acción no se puede deshacer.</p>
+    </div>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-secondary" onclick="cerrarModalEliminar()">Cancelar</button>
+      <button class="btn btn-danger" id="btn-confirmar-eliminar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/auth.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/notifications.js"></script>
+<script>
+  if (!Auth.requireRole(['ADMIN'])) {
+    // Redirige automáticamente
+  }
+
+  const usuario = Auth.getUser();
+  if (usuario) {
+    document.getElementById('user-info').textContent = `${usuario.nombre} (${usuario.role})`;
+  }
+
+  let mesas = [];
+  let mesaAEliminar = null;
+
+  async function cargarMesas() {
+    try {
+      mesas = await api.get('/admin/mesas?restauranteId=1', true) || [];
+      document.getElementById('loading-mesas').style.display = 'none';
+      document.getElementById('mesas-grid').style.display = 'grid';
+      actualizarEstadisticas();
+      renderizarMesas(mesas);
+    } catch (error) {
+      document.getElementById('loading-mesas').innerHTML = `<p style="color:var(--error)">Error al cargar mesas: ${escaparHtml(error.message)}</p>`;
+    }
+  }
+
+  function actualizarEstadisticas() {
+    document.getElementById('stat-total-mesas').textContent = mesas.length;
+    const disp = mesas.filter(m => Boolean(m.disponible)).length;
+    document.getElementById('stat-mesas-disp').textContent = disp;
+    document.getElementById('stat-mesas-nodisp').textContent = mesas.length - disp;
+  }
+
+  function filtrarMesas() {
+    const q = document.getElementById('buscar').value.toLowerCase().trim();
+    const dispFiltro = document.getElementById('filtro-disp').value;
+
+    let res = mesas;
+    if (q) {
+      res = res.filter(m => String(m.numero).includes(q) || (m.descripcion && m.descripcion.toLowerCase().includes(q)));
+    }
+    if (dispFiltro !== '') {
+      const b = dispFiltro === 'true';
+      res = res.filter(m => Boolean(m.disponible) === b);
+    }
+    renderizarMesas(res);
+  }
+
+  function renderizarMesas(lista) {
+    const grid = document.getElementById('mesas-grid');
+    if (!lista || lista.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted)">No se encontraron mesas registradas.</div>';
+      return;
+    }
+
+    grid.innerHTML = lista.map(m => {
+      const qrUrl = `${API_BASE}/mesas/${m.id}/qr`;
+      const menuUrl = `../menu.html?restauranteId=1&mesa=${m.numero}&mesaId=${m.id}`;
+      return `
+        <div class="mesa-card">
+          <div>
+            <div class="mesa-header">
+              <span class="mesa-numero">🪑 Mesa #${m.numero}</span>
+              <span class="${m.disponible ? 'badge-disp' : 'badge-ocup'}">${m.disponible ? '● Disponible' : '● No disponible'}</span>
+            </div>
+
+            <div class="mesa-qr-container">
+              <img class="mesa-qr-img" src="${qrUrl}" alt="QR Mesa ${m.numero}" onerror="this.alt='QR no disponible'">
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.4rem">Código QR Digital</div>
+            </div>
+
+            <div class="mesa-info-row">
+              <span>📍 Ubicación:</span>
+              <strong>${m.descripcion ? escaparHtml(m.descripcion) : 'Salón Principal'}</strong>
+            </div>
+            <div class="mesa-info-row">
+              <span>👥 Capacidad:</span>
+              <strong>${m.capacidad || 4} personas</strong>
+            </div>
+          </div>
+
+          <div class="mesa-actions">
+            <button class="btn btn-primary btn-full" onclick="abrirModalImprimirQr(${m.numero}, '${qrUrl}')">
+              🖨️ Imprimir / Ver QR
+            </button>
+            <a href="${menuUrl}" target="_blank" class="btn btn-secondary">
+              🔗 Abrir Menú
+            </a>
+            <button class="btn btn-secondary" onclick="toggleDisponibilidad(${m.id})">
+              ${m.disponible ? 'Desactivar' : 'Activar'}
+            </button>
+            <button class="btn btn-secondary" onclick="abrirModalEditar(${m.id})">
+              ✏️ Editar
+            </button>
+            <button class="btn btn-danger" onclick="abrirModalEliminar(${m.id}, ${m.numero})">
+              🗑️ Eliminar
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function abrirModalNueva() {
+    document.getElementById('modal-titulo').textContent = 'Nueva Mesa';
+    document.getElementById('mesa-id').value = '';
+    const proximoNumero = mesas.length > 0 ? Math.max(...mesas.map(m => m.numero)) + 1 : 1;
+    document.getElementById('mesa-numero').value = proximoNumero;
+    document.getElementById('mesa-desc').value = '';
+    document.getElementById('mesa-capacidad').value = 4;
+    document.getElementById('mesa-disponible').checked = true;
+    document.getElementById('modal-mesa').style.display = 'flex';
+    document.getElementById('mesa-numero').focus();
+  }
+
+  function abrirModalEditar(id) {
+    const m = mesas.find(mesa => mesa.id === id);
+    if (!m) return;
+
+    document.getElementById('modal-titulo').textContent = `Editar Mesa #${m.numero}`;
+    document.getElementById('mesa-id').value = m.id;
+    document.getElementById('mesa-numero').value = m.numero;
+    document.getElementById('mesa-desc').value = m.descripcion || '';
+    document.getElementById('mesa-capacidad').value = m.capacidad || 4;
+    document.getElementById('mesa-disponible').checked = Boolean(m.disponible);
+    document.getElementById('modal-mesa').style.display = 'flex';
+  }
+
+  function cerrarModal() {
+    document.getElementById('modal-mesa').style.display = 'none';
+  }
+
+  async function guardarMesa() {
+    const numero = parseInt(document.getElementById('mesa-numero').value);
+    if (!numero || numero <= 0) {
+      mostrarToast('Ingresa un número de mesa válido', 'warning');
+      return;
+    }
+
+    const id = document.getElementById('mesa-id').value;
+    const body = {
+      numero,
+      descripcion: document.getElementById('mesa-desc').value.trim() || null,
+      capacidad: parseInt(document.getElementById('mesa-capacidad').value) || 4,
+      disponible: document.getElementById('mesa-disponible').checked,
+      restauranteId: 1
+    };
+
+    const btn = document.getElementById('btn-guardar-mesa');
+    btn.disabled = true;
+
+    try {
+      if (id) {
+        await api.put(`/admin/mesas/${id}`, body, true);
+        mostrarToast(`Mesa #${numero} actualizada`, 'success');
+      } else {
+        await api.post('/admin/mesas', body, true);
+        mostrarToast(`Mesa #${numero} registrada exitosamente`, 'success');
+      }
+      cerrarModal();
+      await cargarMesas();
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function toggleDisponibilidad(id) {
+    try {
+      await api.patch(`/admin/mesas/${id}/toggle`, null, true);
+      mostrarToast('Disponibilidad actualizada', 'success');
+      await cargarMesas();
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    }
+  }
+
+  function abrirModalImprimirQr(numero, qrUrl) {
+    document.getElementById('qr-titulo-mesa').textContent = `Mesa #${numero}`;
+    document.getElementById('qr-imagen-modal').src = qrUrl;
+    document.getElementById('modal-imprimir-qr').style.display = 'flex';
+  }
+
+  function cerrarModalQr() {
+    document.getElementById('modal-imprimir-qr').style.display = 'none';
+  }
+
+  function abrirModalEliminar(id, numero) {
+    mesaAEliminar = id;
+    document.getElementById('eliminar-mensaje').innerHTML = `¿Estás seguro de que deseas eliminar la <strong>Mesa #${numero}</strong>?`;
+    document.getElementById('btn-confirmar-eliminar').onclick = confirmarEliminar;
+    document.getElementById('modal-eliminar').style.display = 'flex';
+  }
+
+  function cerrarModalEliminar() {
+    document.getElementById('modal-eliminar').style.display = 'none';
+    mesaAEliminar = null;
+  }
+
+  async function confirmarEliminar() {
+    if (!mesaAEliminar) return;
+    try {
+      await api.delete(`/admin/mesas/${mesaAEliminar}`, true);
+      mostrarToast('Mesa eliminada', 'success');
+      cerrarModalEliminar();
+      await cargarMesas();
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', cargarMesas);
+</script>
+</body>
+</html>

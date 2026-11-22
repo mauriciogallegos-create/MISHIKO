@@ -1,177 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MISHIKO – Plataforma de Pedidos</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/mishiko.css">
-  <style>
-    .hero {
-      background: linear-gradient(135deg, #FF6B35 0%, #e55a28 50%, #2D3748 100%);
-      color: #fff;
-      padding: 5rem 1.5rem;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    }
-    .hero-title { font-size: 3rem; font-weight: 800; margin-bottom: 1rem; position: relative; }
-    .hero-title span { color: #FFE0CC; }
-    .hero-subtitle { font-size: 1.15rem; opacity: 0.9; max-width: 500px; margin: 0 auto 2rem; position: relative; }
-    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; position: relative; }
-    .btn-hero-primary {
-      background: #fff; color: #FF6B35; font-weight: 700; padding: 0.9rem 2rem;
-      border-radius: 50px; border: none; font-family: 'Poppins',sans-serif;
-      font-size: 1rem; cursor: pointer; transition: all 0.25s;
-      text-decoration: none; display: inline-block;
-    }
-    .btn-hero-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
-    .btn-hero-secondary {
-      background: transparent; color: #fff; border: 2px solid #fff;
-      font-weight: 600; padding: 0.9rem 2rem; border-radius: 50px;
-      font-family: 'Poppins',sans-serif; font-size: 1rem; cursor: pointer;
-      text-decoration: none; display: inline-block; transition: all 0.25s;
-    }
-    .btn-hero-secondary:hover { background: rgba(255,255,255,0.15); }
-    .hero-cat { font-size: 5rem; margin-bottom: 1rem; }
-
-    .features { padding: 4rem 1.5rem; }
-    .features h2 { text-align: center; font-size: 1.8rem; margin-bottom: 2.5rem; }
-    .features-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1.5rem; max-width: 1000px; margin: 0 auto;
-    }
-    .feature-card {
-      background: #fff; border-radius: 16px; padding: 2rem 1.5rem;
-      text-align: center; box-shadow: 0 4px 20px rgba(255,107,53,0.1);
-      transition: transform 0.25s;
-    }
-    .feature-card:hover { transform: translateY(-5px); }
-    .feature-icon { font-size: 2.5rem; margin-bottom: 1rem; }
-    .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.6rem; }
-    .feature-card p { color: #718096; font-size: 0.9rem; }
-
-    .qr-section { background: #fff; padding: 4rem 1.5rem; text-align: center; }
-    .qr-section h2 { font-size: 1.6rem; margin-bottom: 1rem; }
-    .qr-section p { color: #718096; margin-bottom: 2rem; }
-    .qr-box {
-      display: inline-block; padding: 1.5rem; border: 3px dashed #FF6B35;
-      border-radius: 16px; background: #FFF8F5;
-    }
-    #qr-mesa { display: block; margin: .5rem auto; }
-    #qr-imagen { display: block; margin: .5rem auto; }
-    #qr-imagen[hidden] { display: none; }
-    .qr-label { font-weight: 600; color: #FF6B35; margin-bottom: 0.4rem; }
-    .qr-url { font-size: 0.8rem; color: #718096; word-break: break-all; }
-
-    .mesas-grid {
-      display: flex; gap: 1rem; justify-content: center;
-      flex-wrap: wrap; margin-top: 2rem;
-    }
-    .mesa-qr-btn {
-      background: #FF6B35; color: #fff; border: none;
-      padding: 0.6rem 1.4rem; border-radius: 50px;
-      font-family: 'Poppins',sans-serif; font-size: 0.9rem;
-      font-weight: 600; cursor: pointer; text-decoration: none;
-      transition: background 0.25s;
-    }
-    .mesa-qr-btn:hover { background: #e55a28; }
-
-    footer {
-      background: #2D3748; color: rgba(255,255,255,0.75);
-      padding: 2rem 1.5rem; text-align: center; font-size: 0.85rem;
-    }
-    footer strong { color: #FF6B35; }
-
-    @media (max-width: 600px) { .hero-title { font-size: 2rem; } }
-  </style>
-</head>
-<body>
-  <!-- Navbar -->
-  <nav class="navbar">
-    <div class="navbar-brand">
-      <a href="index.html" style="display:flex;align-items:center;text-decoration:none">
-        <img src="assets/logo.png" alt="MISHIKO" style="height:38px;object-fit:contain">
-      </a>
-    </div>
-    <div style="display:flex;align-items:center;gap:1rem">
-      <a href="menu.html?restauranteId=1&mesa=1&mesaId=1" style="color:var(--secondary);font-weight:500;font-size:0.95rem">Menú</a>
-      <a href="seguimiento.html" style="color:var(--secondary);font-weight:500;font-size:0.95rem">Mi pedido</a>
-      <a href="login.html" class="btn btn-primary" style="padding:7px 18px;font-size:0.88rem">Acceder</a>
-    </div>
-  </nav>
-
-  <!-- Hero -->
-  <section class="hero">
-    <div class="hero-cat" style="display:flex;justify-content:center;margin-bottom:1rem">
-      <img src="assets/michi/michi-macho-saludo.png" alt="Michi mesero"
-           style="width:140px;height:140px;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(255,107,53,0.35));animation:michiFloat 2.8s ease-in-out infinite">
-    </div>
-    <h1 class="hero-title">Bienvenido a <span>MISHIKO</span></h1>
-    <p class="hero-subtitle">Tu experiencia gastronómica digital. Pide desde tu mesa, sigue tu orden en tiempo real.</p>
-    <div class="hero-actions">
-      <a href="menu.html?restauranteId=1&mesa=1&mesaId=1" class="btn-hero-primary">🍽 Ver Menú</a>
-      <a href="seguimiento.html" class="btn-hero-secondary">📍 Seguir pedido</a>
-    </div>
-  </section>
-
-  <!-- Features -->
-  <section class="features">
-    <h2>¿Por qué <strong style="color:var(--primary)">MISHIKO</strong>?</h2>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">📱</div>
-        <h3>Menú Digital QR</h3>
-        <p>Escanea el código QR de tu mesa y accede al menú al instante, sin descargar ninguna app.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">⚡</div>
-        <h3>Pedidos en Tiempo Real</h3>
-        <p>Tu orden llega directamente a cocina. Sigue el estado desde tu celular.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">📄</div>
-        <h3>Comprobante Digital</h3>
-        <p>Descarga tu comprobante en PDF con todos los detalles de tu orden.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">🐱</div>
-        <h3>Michi, tu Mesero Virtual</h3>
-        <p>Nuestro gato 3D te ayuda a ordenar por voz o texto de forma divertida.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- QR Section -->
-  <section class="qr-section">
-    <h2>Accede directamente a tu mesa</h2>
-    <p>Haz clic en la mesa de tu preferencia o escanea el QR en el local.</p>
-    <div class="qr-box">
-      <label class="qr-label" for="qr-mesa">Código QR de la mesa</label>
-      <select id="qr-mesa"></select>
-      <img id="qr-imagen" width="180" height="180" alt="">
-      <div id="qr-estado" class="qr-url" role="status"></div>
-    </div>
-    <div class="mesas-grid">
-      <a href="menu.html?restauranteId=1&mesa=1&mesaId=1" class="mesa-qr-btn">Mesa 1</a>
-      <a href="menu.html?restauranteId=1&mesa=2&mesaId=2" class="mesa-qr-btn">Mesa 2</a>
-      <a href="menu.html?restauranteId=1&mesa=3&mesaId=3" class="mesa-qr-btn">Mesa 3</a>
-      <a href="menu.html?restauranteId=1&mesa=4&mesaId=4" class="mesa-qr-btn">Mesa 4</a>
-    </div>
-  </section>
-
-  <footer>
-    <p><strong>MISHIKO Restaurant</strong> · Jr. Las Palmeras 123, Lima, Perú · Tel: 01-123-4567</p>
-    <p style="margin-top:0.5rem">© 2024 MISHIKO · Todos los derechos reservados</p>
-  </footer>
-  <script src="js/api.js"></script>
-  <script src="js/mesas.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MISHIKO — Smart Dining OS</title>
+    <meta name="description" content="Plataforma gastronómica inteligente con menú QR en vivo, asistente Michi AI por voz, pantalla de cocina KDS, gestión de mesas y control de acceso." />
+    <meta property="og:title" content="MISHIKO — Smart Dining OS" />
+    <meta property="og:description" content="Plataforma gastronómica inteligente con menú QR en vivo, asistente Michi AI por voz, pantalla de cocina KDS, gestión de mesas y control de acceso." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="./assets/index-B80KgyiT.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-sWUMjquO.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>
+

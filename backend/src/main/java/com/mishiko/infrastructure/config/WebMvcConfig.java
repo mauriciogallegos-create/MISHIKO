@@ -34,5 +34,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         String ubicacion = Path.of(uploadDir).toAbsolutePath().normalize().toUri().toString();
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(ubicacion.endsWith("/") ? ubicacion : ubicacion + "/");
+        registry.addResourceHandler("/**")
+                .addResourceLocations("classpath:/static/");
     }
 }

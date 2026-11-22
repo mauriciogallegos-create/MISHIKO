@@ -1,0 +1,81 @@
+/* ═══════════════════════════════════════════════════════
+   MISHIKO – Estilos Panel Administrativo
+   ═══════════════════════════════════════════════════════ */
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.img-preview {
+  width: 100%; height: 160px; object-fit: cover;
+  border-radius: 10px; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3rem; border: 2px dashed #e2e8f0; overflow: hidden;
+}
+.img-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+.filter-bar {
+  display: flex; gap: 0.75rem; flex-wrap: wrap;
+  align-items: center; margin-bottom: 1.25rem;
+}
+.filter-bar input, .filter-bar select {
+  padding: 0.5rem 0.9rem; border: 2px solid #e2e8f0;
+  border-radius: 8px; font-family: var(--font); font-size: 0.88rem;
+  background: #fff;
+}
+.filter-bar input:focus, .filter-bar select:focus {
+  outline: none; border-color: var(--primary);
+}
+.filter-bar input[type=text] { min-width: 220px; }
+
+.productos-admin-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.1rem;
+}
+.prod-admin-card {
+  background: #fff; border-radius: 12px; box-shadow: var(--shadow);
+  overflow: hidden; transition: transform 0.2s;
+}
+.prod-admin-card:hover { transform: translateY(-2px); }
+.prod-admin-img {
+  width: 100%; height: 130px;
+  background: var(--primary-light); display: flex;
+  align-items: center; justify-content: center; font-size: 2.5rem; overflow: hidden;
+}
+.prod-admin-img img { width: 100%; height: 100%; object-fit: cover; }
+.prod-admin-body { padding: 0.9rem; }
+.prod-admin-nombre { font-weight: 600; font-size: 0.93rem; margin-bottom: 0.3rem; }
+.prod-admin-cat  { font-size: 0.75rem; color: var(--primary); font-weight: 600; margin-bottom: 0.4rem; }
+.prod-admin-precio { font-weight: 700; color: var(--primary); font-size: 1rem; }
+.prod-admin-actions { display: flex; gap: 0.4rem; margin-top: 0.75rem; }
+.prod-admin-actions button { flex: 1; font-size: 0.78rem; padding: 5px 0; }
+
+.toggle-disponible { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; cursor: pointer; }
+.toggle-switch { position: relative; width: 42px; height: 22px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; background: #e2e8f0;
+  border-radius: 22px; transition: 0.3s; cursor: pointer;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: 0.3s;
+}
+input:checked + .toggle-slider { background: var(--success); }
+input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+.btn-accion { padding: 4px 10px; font-size: 0.78rem; border-radius: 6px; border: none; cursor: pointer; font-family: var(--font); font-weight: 600; transition: opacity 0.2s; }
+.btn-accion:hover { opacity: 0.85; }
+.btn-editar  { background: #DBEAFE; color: #1E40AF; }
+.btn-borrar  { background: #FEE2E2; color: #991B1B; }
+.btn-ver     { background: #D1FAE5; color: #065F46; }
+.btn-estado  { background: #FDE68A; color: #78350F; }
+
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1.25rem;
+}
+.section-header h2 { font-size: 1.1rem; font-weight: 600; }
+
+@media (max-width: 900px) {
+  .form-row { grid-template-columns: 1fr; }
+  .productos-admin-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
