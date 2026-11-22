@@ -321,7 +321,8 @@ export const AdminTablesView: React.FC<AdminTablesViewProps> = ({
               </div>
               <QRCodeImage
                 value={`http://localhost:8080/menu.html?restaurantId=1&mesa=${selectedTable.number}&token=${selectedTable.token}`}
-                size={84}
+                size={90}
+                caption={selectedTable.label}
                 alt={`QR ${selectedTable.label}`}
               />
             </div>

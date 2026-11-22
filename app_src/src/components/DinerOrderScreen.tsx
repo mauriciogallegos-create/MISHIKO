@@ -499,7 +499,8 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
                 {/* Real High-Resolution Scannable QR Component */}
                 <QRCodeImage
                   value={`http://localhost:8080/menu.html?restaurantId=1&mesa=${activeOrder.tableNumber}&orden=${activeOrder.id}`}
-                  size={76}
+                  size={84}
+                  caption={`MESA #${activeOrder.tableNumber}`}
                   alt={`QR Comanda ${activeOrder.id}`}
                 />
               </div>
