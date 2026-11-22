@@ -79,7 +79,8 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   const [secondsListening, setSecondsListening] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [showKeyboardInput, setShowKeyboardInput] = useState(false);
-  const [michiPose, setMichiPose] = useState<'saludo' | 'anotado' | 'listo'>('saludo');
+  type MichiPoseType = 'saludo' | 'anotado' | 'listo' | 'satisfecho' | 'curioso' | 'sorprendido' | 'risa';
+  const [michiPose, setMichiPose] = useState<MichiPoseType>('saludo');
   const [isJumping, setIsJumping] = useState(false);
   const [activeRec, setActiveRec] = useState<any>(null);
 
@@ -116,18 +117,26 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     return () => window.clearInterval(id);
   }, [isListening]);
 
-  // Imagen del gato según género y pose (Talking Tom style)
+  // Imagen del gato según género y pose (Talking Tom style con 7 expresiones)
   const isWhiteCat = config.furColor === 'Blanco';
-  const michiImages = {
+  const michiImages: Record<'macho' | 'hembra', Record<MichiPoseType, string>> = {
     macho: {
-      saludo:  './assets/michi/michi-macho-saludo.png',
-      anotado: './assets/michi/michi-macho-anotado.png',
-      listo:   './assets/michi/michi-macho-listo.png',
+      saludo:      './assets/michi/michi-macho-saludo.png',
+      anotado:     './assets/michi/michi-macho-anotado.png',
+      listo:       './assets/michi/michi-macho-listo.png',
+      satisfecho:  './assets/michi/michi-macho-satisfecho.png',
+      curioso:     './assets/michi/michi-macho-curioso.png',
+      sorprendido: './assets/michi/michi-macho-sorprendido.png',
+      risa:        './assets/michi/michi-macho-risa.png',
     },
     hembra: {
-      saludo:  './assets/michi/michi-hembra-saludo.png',
-      anotado: './assets/michi/michi-hembra-anotado.png',
-      listo:   './assets/michi/michi-hembra-listo.png',
+      saludo:      './assets/michi/michi-hembra-saludo.png',
+      anotado:     './assets/michi/michi-hembra-anotado.png',
+      listo:       './assets/michi/michi-hembra-listo.png',
+      satisfecho:  './assets/michi/michi-hembra-satisfecho.png',
+      curioso:     './assets/michi/michi-hembra-curioso.png',
+      sorprendido: './assets/michi/michi-hembra-sorprendido.png',
+      risa:        './assets/michi/michi-hembra-risa.png',
     }
   };
 
@@ -363,20 +372,42 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     else startListening();
   };
 
-  // Interacción táctil estilo Talking Tom al tocar el gato
+  // Interacción táctil estilo Talking Tom al tocar el gato con 7 expresiones
   const handleTouchMichi = () => {
     setIsJumping(true);
     setTimeout(() => setIsJumping(false), 600);
 
-    const frases = [
-      `¡Miau! ¡Aquí estoy para atender tu mesa #${tableNumber}! Toca el botón rojo o dime qué deseas ordenar 🐱`,
-      `¡Purr! El Ramen Criollo y la Limonada Frozen están deliciosos hoy. ¿Te provoco uno? 🍽️`,
-      `¡Atendiendo con patitas rápidas! ¿Deseas consultar bebidas según el clima o pedir la comanda? 😺`,
+    const interacciones: { pose: MichiPoseType; texto: string }[] = [
+      {
+        pose: 'risa',
+        texto: `¡Jajaja miau! ¡Eso me hace cosquillas en las orejitas y los bigotes! 😹 ¿Listo para ordenar algo rico en Mesa #${tableNumber}?`,
+      },
+      {
+        pose: 'satisfecho',
+        texto: `¡Ufff, qué delicia de carta! Me sobo la pancita solo de pensar en el Wagyu y el Ramen Tonkotsu 😋. ¿Te provoco uno?`,
+      },
+      {
+        pose: 'curioso',
+        texto: `¿Qué plato se te antoja hoy? Soy todo oídos 🐾. Dime "bebidas según el clima" o pregúntame por las especialidades.`,
+      },
+      {
+        pose: 'sorprendido',
+        texto: `¡Waaah! ¡La cocina está a máxima marcha sacando pedidos en tiempo récord! 🔥`,
+      },
+      {
+        pose: 'saludo',
+        texto: `¡Miau! Aquí estoy atento a tu servicio. Toca el micrófono rojo o dime tu comanda cuando gustes 🐱`,
+      },
+      {
+        pose: 'listo',
+        texto: `¡Tin tin! Servicio listo para llevar los mejores sabores directo a tu mesa 🍽️`,
+      },
     ];
-    const elegida = frases[Math.floor(Math.random() * frases.length)];
-    setAssistantReply(elegida);
-    setMichiPose('saludo');
-    speakLine(elegida);
+
+    const elegida = interacciones[Math.floor(Math.random() * interacciones.length)];
+    setAssistantReply(elegida.texto);
+    setMichiPose(elegida.pose);
+    speakLine(elegida.texto);
   };
 
   const handleSaveAppearance = () => {
@@ -388,6 +419,17 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   const handlePlayGesture = (gesture: MichiGesture) => {
     setSelectedGesture(gesture);
     setIsPlayingGesture(true);
+
+    // Mapeo dinámico de gesto a pose visual
+    let nextPose: MichiPoseType = 'saludo';
+    if (gesture.id === 'satisfecho' || gesture.id === 'celebracion') nextPose = 'satisfecho';
+    else if (gesture.id === 'curioso' || gesture.id === 'pensando' || gesture.id === 'sommelier') nextPose = 'curioso';
+    else if (gesture.id === 'sorprendido') nextPose = 'sorprendido';
+    else if (gesture.id === 'risa') nextPose = 'risa';
+    else if (gesture.id === 'escuchando' || gesture.id === 'confirmado') nextPose = 'anotado';
+    else if (gesture.id === 'cocina' || gesture.id === 'lista') nextPose = 'listo';
+    setMichiPose(nextPose);
+
     if (config.autoSpeak || config.voiceEnabled) {
       speakLine(gesture.speechLine, config.gestureSpeed);
     }

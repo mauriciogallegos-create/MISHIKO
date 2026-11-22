@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Dish, KitchenOrder, MichiAlert, OrderStep, PastVisit } from '../types/mishiko';
 import { DishImage } from './DishImage';
+import { QRCodeImage } from './QRCodeImage';
 
 interface DinerOrderScreenProps {
   activeOrder: KitchenOrder;
@@ -89,24 +90,44 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
     setTimeout(() => setWaiterCalled(false), 4500);
   };
 
+  const now = new Date();
+  const realDate = now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const realTime = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const liveTimestamp = `${realDate} · ${realTime} hrs`;
+
   const handleDownloadTicket = () => {
     const content = [
-      'MISHIKO - SMART DINING & MICHI',
-      'RUC: 20608945231 | Av. El Derby 254, Lima',
-      `Ticket Control: ${activeOrder.ticketControl}`,
-      `Comanda: ${activeOrder.id}`,
-      `Mesa Asignada: ${activeOrder.tableLabel} (${activeOrder.zone})`,
-      `Hora Emision: ${activeOrder.createdAtLabel}`,
-      '----------------------------------------',
+      '==================================================',
+      '          MISHIKO - SMART DINING & MICHI',
+      '                 RUC: 20608945231',
+      '     Av. El Derby 254, Santiago de Surco, Lima',
+      '==================================================',
+      'COMPROBANTE DE CONSUMO INTERNO / TICKET CONTROL',
+      `Ticket Control:  ${activeOrder.ticketControl}`,
+      `Serie / Número:  B001-000089`,
+      `Comanda:         ${activeOrder.id}`,
+      `Mesa Asignada:   ${activeOrder.tableLabel} (${activeOrder.zone})`,
+      `Mozo de Turno:   Carlos V. (Salón Principal)`,
+      `Fecha Emisión:   ${realDate}`,
+      `Hora Emisión:    ${realTime} hrs`,
+      `Forma de Pago:   Yape / Plin / Tarjeta / Efectivo`,
+      '--------------------------------------------------',
+      'CANT.  DESCRIPCIÓN                   IMPORTE (S/)',
+      '--------------------------------------------------',
       ...activeOrder.items.map(
-        (i) => `${i.quantity}x ${i.name} - S/ ${(i.unitPrice * i.quantity).toFixed(2)}`,
+        (i) => `${String(i.quantity).padEnd(6)} ${(i.name).slice(0, 28).padEnd(29)} S/ ${(i.unitPrice * i.quantity).toFixed(2).padStart(6)}`,
       ),
-      '----------------------------------------',
-      `Subtotal Afecto: S/ ${subtotalAfecto.toFixed(2)}`,
-      `I.G.V. (18%):    S/ ${igvAmount.toFixed(2)}`,
-      `TOTAL CONSUMO:   S/ ${totalAmount.toFixed(2)}`,
-      `Verificacion:    ${activeOrder.verificationId}`,
-      'Nota: Comprobante de consumo interno (no SUNAT).',
+      '--------------------------------------------------',
+      `SUBTOTAL AFECTO:                     S/ ${subtotalAfecto.toFixed(2)}`,
+      `I.G.V. (18%):                        S/ ${igvAmount.toFixed(2)}`,
+      `TOTAL CONSUMO:                       S/ ${totalAmount.toFixed(2)}`,
+      '==================================================',
+      `ID VERIFICACIÓN QR: ${activeOrder.verificationId}`,
+      `URL Auditoría: http://localhost:8080/menu.html?mesa=${activeOrder.tableNumber}`,
+      '--------------------------------------------------',
+      '¡Gracias por su preferencia! Atendido por Michi 🐾',
+      'Nota: Documento de control interno no válido para SUNAT.',
+      '==================================================',
     ].join('\n');
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -428,9 +449,15 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-stone-600 dark:text-stone-400">
-                  <span>Hora Emisión</span>
-                  <span className="font-mono tabular-nums text-stone-900 dark:text-stone-100">
-                    {activeOrder.createdAtLabel}
+                  <span>Mozo Responsable</span>
+                  <span className="font-medium text-stone-800 dark:text-stone-200">
+                    Carlos V. (Turno Noche)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-stone-600 dark:text-stone-400">
+                  <span>Fecha y Hora</span>
+                  <span className="font-mono tabular-nums text-stone-900 dark:text-stone-100 font-semibold">
+                    {liveTimestamp}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-stone-600 dark:text-stone-400 pt-2 border-t border-stone-100 dark:border-stone-800">
@@ -456,54 +483,46 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
                 </span>
               </div>
 
-              {/* Verification QR Block */}
+              {/* Verification QR Block with Real High-Res QR */}
               <div className="rounded-xl bg-stone-50 dark:bg-stone-800/70 p-4 flex items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-stone-900 dark:text-stone-100">
-                    Verificación Interna
+                    Verificación Interna QR
                   </div>
                   <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                    Escanea para auditar la comanda en cocina o caja.
+                    Escanea para auditar la comanda en cocina, caja o mesa.
                   </p>
                   <div className="text-xs font-mono font-semibold text-violet-700 dark:text-violet-300">
                     ID: {activeOrder.verificationId}
                   </div>
                 </div>
-                {/* Crisp inline QR vector */}
-                <svg
-                  viewBox="0 0 36 36"
-                  className="w-16 h-16 shrink-0 bg-white p-1.5 rounded-lg border border-stone-200"
-                  aria-label={`Código QR ${activeOrder.verificationId}`}
-                >
-                  <rect x="2" y="2" width="10" height="10" fill="#1C1917" />
-                  <rect x="4" y="4" width="6" height="6" fill="#FFFFFF" />
-                  <rect x="6" y="6" width="2" height="2" fill="#1C1917" />
-                  <rect x="24" y="2" width="10" height="10" fill="#1C1917" />
-                  <rect x="26" y="4" width="6" height="6" fill="#FFFFFF" />
-                  <rect x="28" y="6" width="2" height="2" fill="#1C1917" />
-                  <rect x="2" y="24" width="10" height="10" fill="#1C1917" />
-                  <rect x="4" y="26" width="6" height="6" fill="#FFFFFF" />
-                  <rect x="6" y="28" width="2" height="2" fill="#1C1917" />
-                  <rect x="15" y="4" width="3" height="3" fill="#1C1917" />
-                  <rect x="15" y="10" width="6" height="3" fill="#1C1917" />
-                  <rect x="14" y="16" width="8" height="4" fill="#1C1917" />
-                  <rect x="4" y="16" width="6" height="4" fill="#1C1917" />
-                  <rect x="26" y="16" width="8" height="3" fill="#1C1917" />
-                  <rect x="16" y="24" width="4" height="10" fill="#1C1917" />
-                  <rect x="24" y="25" width="4" height="4" fill="#1C1917" />
-                  <rect x="30" y="29" width="4" height="5" fill="#1C1917" />
-                </svg>
+                {/* Real High-Resolution Scannable QR Component */}
+                <QRCodeImage
+                  value={`http://localhost:8080/menu.html?restaurantId=1&mesa=${activeOrder.tableNumber}&orden=${activeOrder.id}`}
+                  size={76}
+                  alt={`QR Comanda ${activeOrder.id}`}
+                />
               </div>
 
               <div className="space-y-2.5">
-                <button
-                  type="button"
-                  onClick={handleDownloadTicket}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#9E3304] hover:bg-[#822802] text-white text-sm font-semibold transition-colors min-h-[46px]"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Descargar Comprobante PDF / Ticket</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl bg-stone-900 dark:bg-stone-800 hover:bg-stone-800 dark:hover:bg-stone-700 text-white text-xs font-semibold transition-colors min-h-[46px]"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Imprimir Ticket</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadTicket}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl bg-[#9E3304] hover:bg-[#822802] text-white text-xs font-semibold transition-colors min-h-[46px]"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Descargar .txt</span>
+                  </button>
+                </div>
                 <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 px-1">
                   <span>Comanda {activeOrder.id}</span>
                   <button
@@ -579,13 +598,17 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
             </div>
 
             <div className="font-mono text-xs bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-2 text-stone-800 dark:text-stone-200">
-              <div className="text-center font-bold">MISHIKO SMART DINING OS</div>
+              <div className="text-center font-bold text-sm">MISHIKO SMART DINING OS</div>
               <div className="text-center text-[11px] text-stone-500">
-                RUC 20608945231 · Av. El Derby 254
+                RUC 20608945231 · Av. El Derby 254, Surco
               </div>
-              <div className="border-t border-dashed border-stone-300 dark:border-stone-700 pt-2">
-                <div>Mesa: {activeOrder.tableLabel}</div>
-                <div>Comanda: {activeOrder.id}</div>
+              <div className="text-center text-[11px] text-amber-600 font-semibold">
+                BOLETA ELECTRÓNICA: B001-000089
+              </div>
+              <div className="border-t border-dashed border-stone-300 dark:border-stone-700 pt-2 text-[11px] space-y-0.5">
+                <div>Mesa: {activeOrder.tableLabel} ({activeOrder.zone})</div>
+                <div>Comanda: {activeOrder.id} · Mozo: Carlos V.</div>
+                <div>Fecha y Hora: {liveTimestamp}</div>
               </div>
               <div className="border-t border-dashed border-stone-300 dark:border-stone-700 pt-2 space-y-1">
                 {activeOrder.items.map((it) => (
@@ -599,7 +622,7 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
               </div>
               <div className="border-t border-dashed border-stone-300 dark:border-stone-700 pt-2 space-y-1 font-bold">
                 <div className="flex justify-between font-normal">
-                  <span>Subtotal</span>
+                  <span>Subtotal Gravado</span>
                   <span>S/ {subtotalAfecto.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-normal">
@@ -607,8 +630,18 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
                   <span>S/ {igvAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>TOTAL</span>
+                  <span>TOTAL A PAGAR</span>
                   <span>S/ {totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-stone-300 dark:border-stone-700 pt-3 flex flex-col items-center justify-center space-y-1.5 text-center">
+                <QRCodeImage
+                  value={`http://localhost:8080/menu.html?restaurantId=1&mesa=${activeOrder.tableNumber}&orden=${activeOrder.id}`}
+                  size={100}
+                />
+                <div className="text-[10px] text-stone-500">
+                  Verificación QR: {activeOrder.verificationId}
                 </div>
               </div>
             </div>

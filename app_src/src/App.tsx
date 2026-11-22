@@ -397,14 +397,17 @@ export default function App() {
           {/* Clean 3-Zone Top Navigation Bar */}
           <header className="sticky top-0 z-40 h-16 bg-white/90 dark:bg-[#191614]/90 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
             <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-8">
-              {/* Zone 1: Brand Wordmark */}
+              {/* Zone 1: Brand Wordmark & Mascot Logo */}
               <button
                 type="button"
                 onClick={() => setDinerTab('menu')}
-                className="inline-flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[#9E3304] dark:text-amber-400 whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-2.5 whitespace-nowrap shrink-0 hover:opacity-90 transition-opacity"
               >
-                <UtensilsCrossed className="w-5 h-5" />
-                <span>MISHIKO</span>
+                <img
+                  src="./assets/logo.png"
+                  alt="MISHIKO - Smart Dining & Michi"
+                  className="h-9 sm:h-10 w-auto object-contain filter drop-shadow-sm"
+                />
               </button>
 
               {/* Zone 2: Desktop Single-Line Nav Links */}
@@ -577,9 +580,12 @@ export default function App() {
           {/* Desktop Sidebar */}
           <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-white dark:bg-[#191614] border-r border-stone-200 dark:border-stone-800 p-5 justify-between">
             <div className="space-y-6">
-              <div className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-[#9E3304] dark:text-amber-400 px-2">
-                <UtensilsCrossed className="w-5 h-5" />
-                <span>MISHIKO</span>
+              <div className="flex items-center px-1">
+                <img
+                  src="./assets/logo.png"
+                  alt="MISHIKO - Operación & KDS"
+                  className="h-9 w-auto object-contain filter drop-shadow-sm"
+                />
               </div>
 
               <div className="space-y-1">

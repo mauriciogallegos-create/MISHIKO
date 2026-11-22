@@ -548,6 +548,38 @@ export const MICHI_GESTURES: MichiGesture[] = [
     category: 'Emociones',
     speechLine: '¡Arigatou gozaimasu! Gracias por compartir esta experiencia en MISHIKO.',
   },
+  {
+    id: 'satisfecho',
+    title: 'Barriguita Llena / Delicioso',
+    description: 'Sobándose la pancita con lengüita afuera después de probar lo mejor de la carta.',
+    category: 'Emociones',
+    badge: 'Nuevo',
+    speechLine: '¡Miau qué banquete! Me quedó la barriguita llena y el corazón contento 🐾.',
+  },
+  {
+    id: 'curioso',
+    title: 'Curioso & Preguntón',
+    description: 'Orejas alertas y patita arriba esperando tu consulta o recomendación especial.',
+    category: 'Atención en Mesa',
+    badge: 'Nuevo',
+    speechLine: '¿Se te antoja algo especial hoy? Pregúntame por las mejores bebidas o platos del chef.',
+  },
+  {
+    id: 'sorprendido',
+    title: 'Apurado / Fuego en Cocina',
+    description: 'Corriendo a toda velocidad con patitas abiertas para entregar tu plato humeante.',
+    category: 'Comandas',
+    badge: 'Nuevo',
+    speechLine: '¡Waaah! ¡La cocina está a máxima potencia y los pedidos salen volando!',
+  },
+  {
+    id: 'risa',
+    title: 'Carcajada & Alegría',
+    description: 'Risa a carcajadas con ojos cerrados contagiando la buena energía de MISHIKO.',
+    category: 'Emociones',
+    badge: 'Nuevo',
+    speechLine: '¡Jajaja miau! ¡Qué buena vibra se siente en esta mesa! 😹',
+  },
 ];
 
 export const INITIAL_MICHI_CONFIG: MichiConfig = {

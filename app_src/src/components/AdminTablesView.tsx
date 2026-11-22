@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { DiningTable, KitchenOrder, TableZone } from '../types/mishiko';
+import { QRCodeImage } from './QRCodeImage';
 
 interface AdminTablesViewProps {
   tables: DiningTable[];
@@ -306,19 +307,23 @@ export const AdminTablesView: React.FC<AdminTablesViewProps> = ({
               </button>
             </div>
 
-            <div className="rounded-xl bg-stone-50 dark:bg-stone-800/70 p-3.5 flex items-center justify-between gap-3">
-              <div className="min-w-0">
+            <div className="rounded-xl bg-stone-50 dark:bg-stone-800/70 p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0 space-y-1">
                 <div className="text-[11px] font-bold text-stone-500 dark:text-stone-400">
-                  ENLACE QR ASIGNADO
+                  CÓDIGO QR REAL DE MESA
                 </div>
-                <div className="text-xs font-mono font-semibold text-stone-900 dark:text-stone-100 truncate mt-0.5">
+                <div className="text-xs font-mono font-semibold text-stone-900 dark:text-stone-100 truncate">
                   {selectedTable.qrPath}?token={selectedTable.token}
                 </div>
-                <div className="text-[11px] text-[#9E3304] dark:text-amber-400 mt-0.5">
-                  Token de sesión seguro
+                <div className="text-[11px] text-[#9E3304] dark:text-amber-400 font-semibold">
+                  Escanea para ordenar como {selectedTable.label}
                 </div>
               </div>
-              <QrCode className="w-8 h-8 text-stone-700 dark:text-stone-200 shrink-0" />
+              <QRCodeImage
+                value={`http://localhost:8080/menu.html?restaurantId=1&mesa=${selectedTable.number}&token=${selectedTable.token}`}
+                size={84}
+                alt={`QR ${selectedTable.label}`}
+              />
             </div>
 
             {selectedTable.status === 'libre' ? (

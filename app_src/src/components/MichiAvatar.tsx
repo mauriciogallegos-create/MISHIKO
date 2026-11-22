@@ -62,6 +62,11 @@ export const MichiAvatar: React.FC<MichiAvatarProps> = ({
         ? 'w-16 h-16'
         : 'w-32 h-32';
 
+  const avatarImg =
+    config.furColor === 'Blanco'
+      ? './assets/michi/michi-hembra-saludo.png'
+      : './assets/michi/michi-macho-saludo.png';
+
   return (
     <div className="relative inline-flex flex-col items-center shrink-0">
       <div
@@ -69,10 +74,10 @@ export const MichiAvatar: React.FC<MichiAvatarProps> = ({
           isAnimating ? 'scale-105' : ''
         }`}
       >
-        <DishImage
-          src={IMAGES.michi}
+        <img
+          src={avatarImg}
           alt={`${config.name} mesero virtual`}
-          className={`w-full h-full object-cover ${fur.filter}`}
+          className="w-full h-full object-contain p-1 filter drop-shadow-sm select-none"
         />
       </div>
       {showBadge && (
