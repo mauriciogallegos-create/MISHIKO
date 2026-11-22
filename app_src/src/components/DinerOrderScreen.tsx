@@ -74,6 +74,7 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<'pedidos' | 'alertas'>('pedidos');
   const [receiptPreviewOpen, setReceiptPreviewOpen] = useState(false);
+  const [waiterCalled, setWaiterCalled] = useState(false);
   const [notificationToast, setNotificationToast] = useState<string | null>(null);
 
   const playNotificationSound = () => {
@@ -98,6 +99,22 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
     setNotificationToast('¡Tu pedido ha avanzado a preparación en cocina a fuego vivo! 🔥');
     setTimeout(() => setNotificationToast(null), 4000);
   };
+
+  if (!activeOrder || !activeOrder.items) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center space-y-4">
+        <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">No tienes una comanda activa</h2>
+        <p className="text-xs text-stone-500">Agrega platillos desde el Menú para crear tu comanda.</p>
+        <button
+          type="button"
+          onClick={onGoToMenu}
+          className="px-5 py-2.5 rounded-xl bg-[#9E3304] text-white text-xs font-bold shadow-md hover:bg-[#822802]"
+        >
+          Ir al Menú
+        </button>
+      </div>
+    );
+  }
 
   const totalAmount = activeOrder.items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
