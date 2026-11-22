@@ -57,7 +57,7 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Rutas públicas
-                .requestMatchers("/auth/**", "/h2-console/**").permitAll()
+                .requestMatchers("/auth/**", "/h2-console/**", "/mascota/**", "/michi/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/*.html", "/admin/*.html", "/cocina/*.html", "/mascota/*.html", "/css/**", "/js/**", "/assets/**", "/uploads/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/menu/**", "/mesas", "/mesas/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/productos/**").permitAll()
