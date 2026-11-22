@@ -150,7 +150,11 @@ function agregarAlCarrito(producto) {
   Cart.add(producto);
   renderCarritoItems();
   mostrarToast(`✅ ${producto.nombre} agregado`, 'success');
-  michiHabla('¡Excelente elección! Tu pedido está tomando forma 😸');
+  if (typeof michiAnotar === 'function') {
+    michiAnotar(producto.nombre, 1);
+  } else if (typeof michiHabla === 'function') {
+    michiHabla('¡Excelente elección! Tu pedido está tomando forma 😸', 'anotado');
+  }
 
   // Animación del botón
   const cards = document.querySelectorAll(`[data-id="${producto.id}"]`);

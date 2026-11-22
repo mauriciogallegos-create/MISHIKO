@@ -1,227 +1,165 @@
 /**
- * michi.js – Mascota virtual Michi 3D con Three.js
- * Voz (SpeechSynthesis) y reconocimiento (SpeechRecognition)
+ * michi.js — Mascota virtual Michi con expresiones PNG reales
+ * 
+ * Expresiones del gato mesero:
+ * 1. SALUDO  (saludo):    Patita saludando, bienvenida e idle.
+ * 2. ANOTADO (anotado):   Pulgar/dedo arriba ("¡Anotado! He agregado a tu comanda").
+ * 3. LISTO   (listo):     Trayendo la comida en bandeja ("¡Tu pedido ya está listo! Va en camino a tu mesa").
+ * 
+ * Variantes de género (Hombre / Mujer / Preferencia):
+ * - MACHO:  Michi (Gato negro con pañuelo naranja, ojos ámbar)
+ * - HEMBRA: Michita (Gata blanca con pañuelo celeste, ojos celestes con pestañas)
+ * 
+ * Integración de IA:
+ * - HuggingFace sentence-transformers/all-MiniLM-L6-v2 vía michi-ai.js
  */
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // CONFIGURACIÓN GLOBAL DE MICHI
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 const MichiConfig = {
-  color:      '#FF8C42',  // naranja por defecto
-  nombre:     'Michi',
-  vozActiva:  true,
-  volumen:    0.9,
-  mostrar:    true,
-  vozURI:     ''
+  genero:    'macho',  // 'macho' (Michi negro) | 'hembra' (Michita blanca)
+  nombre:    'Michi',
+  vozActiva: true,
+  volumen:   0.9,
+  mostrar:   true,
+  vozURI:    ''
 };
 
-// ═══════════════════════════════════════════════════════
-// 3D CON THREE.JS (CDN, cargado dinámicamente)
-// ═══════════════════════════════════════════════════════
-let michiScene, michiRenderer, michiCamera, michiGroup;
-let michiAnimating = true;
-let michiClock;
+// Resolver ruta de assets independientemente de si estamos en subcarpeta o raíz
+function resolverRutaMichi(nombreArchivo) {
+  const path = window.location.pathname;
+  const enSubcarpeta = path.includes('/mascota/') || path.includes('/admin/') || path.includes('/cocina/');
+  const prefijo = enSubcarpeta ? '../assets/michi/' : 'assets/michi/';
+  return prefijo + nombreArchivo;
+}
+
+// Catálogo de imágenes individuales PNG por género y expresión
+const MICHI_IMAGENES = {
+  macho: {
+    saludo:  'michi-macho-saludo.png',
+    anotado: 'michi-macho-anotado.png',
+    listo:   'michi-macho-listo.png'
+  },
+  hembra: {
+    saludo:  'michi-hembra-saludo.png',
+    anotado: 'michi-hembra-anotado.png',
+    listo:   'michi-hembra-listo.png'
+  }
+};
+
+let michiEstado = 'saludo'; // 'saludo' | 'anotado' | 'listo'
 let michiVisible = false;
 
-function initMichi3D(canvasId = 'michi-canvas') {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
+// ═══════════════════════════════════════════════════════════
+// CAMBIO DE EXPRESIÓN Y GÉNERO
+// ═══════════════════════════════════════════════════════════
 
-  // Cargar Three.js dinámicamente si no está cargado
-  if (typeof THREE === 'undefined') {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js';
-    script.onload = () => buildMichiScene(canvas);
-    document.head.appendChild(script);
-  } else {
-    buildMichiScene(canvas);
+/**
+ * Obtiene la URL completa del PNG actual según género y pose.
+ */
+function getUrlMichi(genero = MichiConfig.genero, expresion = michiEstado) {
+  const g = MICHI_IMAGENES[genero] ? genero : 'macho';
+  const archivo = MICHI_IMAGENES[g][expresion] || MICHI_IMAGENES[g].saludo;
+  return resolverRutaMichi(archivo);
+}
+
+/**
+ * Aplica una expresión visual a Michi.
+ * @param {'saludo'|'anotado'|'listo'} pose
+ */
+function aplicarExpresionMichi(pose) {
+  michiEstado = pose;
+  const img = document.getElementById('michi-img');
+  if (img) {
+    img.src = getUrlMichi(MichiConfig.genero, pose);
+    img.alt = `${MichiConfig.nombre} (${pose})`;
+  }
+
+  const widget = document.getElementById('michi-widget');
+  if (widget) {
+    widget.classList.remove('michi-state-saludo', 'michi-state-anotado', 'michi-state-listo');
+    widget.classList.add(`michi-state-${pose}`);
   }
 }
 
-function buildMichiScene(canvas) {
-  const W = canvas.width  || 80;
-  const H = canvas.height || 80;
-
-  michiScene    = new THREE.Scene();
-  michiCamera   = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
-  michiCamera.position.set(0, 0.5, 4);
-
-  michiRenderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-  michiRenderer.setSize(W, H);
-  michiRenderer.setPixelRatio(window.devicePixelRatio);
-  michiRenderer.setClearColor(0x000000, 0);
-
-  // Luz
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-  michiScene.add(ambientLight);
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  dirLight.position.set(2, 3, 2);
-  michiScene.add(dirLight);
-
-  michiGroup = buildMichiModel();
-  michiScene.add(michiGroup);
-
-  michiClock = new THREE.Clock();
-  animateMichi();
-}
-
-function buildMichiModel() {
-  const group = new THREE.Group();
-  const pelaje = MichiConfig.color;
-  const matPelaje  = new THREE.MeshLambertMaterial({ color: pelaje });
-  const matOscuro  = new THREE.MeshLambertMaterial({ color: 0x222222 });
-  const matBlanco  = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
-  const matRojo    = new THREE.MeshLambertMaterial({ color: 0xCC2222 });
-  const matOjo     = new THREE.MeshLambertMaterial({ color: 0x1a1a2e });
-  const matPupila  = new THREE.MeshLambertMaterial({ color: 0x000000 });
-  const matNariz   = new THREE.MeshLambertMaterial({ color: 0xFF9999 });
-  const matDelantal= new THREE.MeshLambertMaterial({ color: 0xEEEEEE });
-
-  // ── CUERPO ─────────────────────────────────────────────
-  const cuerpo = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), matPelaje);
-  cuerpo.scale.set(1, 1.15, 0.9);
-  cuerpo.position.y = -0.3;
-  group.add(cuerpo);
-
-  // Delantal
-  const delantal = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.65), matDelantal);
-  delantal.position.set(0, -0.28, 0.42);
-  group.add(delantal);
-
-  // ── CABEZA ─────────────────────────────────────────────
-  const cabeza = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), matPelaje);
-  cabeza.position.y = 0.52;
-  group.add(cabeza);
-  group.userData.cabeza = cabeza;
-
-  // Mejillas (blancas)
-  [-0.18, 0.18].forEach(x => {
-    const mejilla = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), matBlanco);
-    mejilla.position.set(x, 0.46, 0.33);
-    mejilla.scale.set(1, 0.8, 0.5);
-    group.add(mejilla);
-  });
-
-  // ── OREJAS ─────────────────────────────────────────────
-  [-0.28, 0.28].forEach((x, idx) => {
-    const oreja = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.26, 4), matPelaje);
-    oreja.position.set(x, 0.88, 0.0);
-    oreja.rotation.z = idx === 0 ? 0.4 : -0.4;
-    group.add(oreja);
-    // Interior oreja
-    const interior = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.16, 4), matNariz);
-    interior.position.set(x * 0.9, 0.88, 0.04);
-    interior.rotation.z = idx === 0 ? 0.4 : -0.4;
-    group.add(interior);
-  });
-
-  // ── OJOS ───────────────────────────────────────────────
-  [-0.15, 0.15].forEach(x => {
-    const ojo = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), matOjo);
-    ojo.position.set(x, 0.57, 0.37);
-    group.add(ojo);
-    // Pupila
-    const pupila = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), matPupila);
-    pupila.position.set(x, 0.57, 0.44);
-    group.add(pupila);
-    // Brillo
-    const brillo = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), matBlanco);
-    brillo.position.set(x + 0.03, 0.59, 0.46);
-    group.add(brillo);
-  });
-
-  // Nariz
-  const nariz = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), matNariz);
-  nariz.position.set(0, 0.5, 0.42);
-  group.add(nariz);
-
-  // ── CORBATÍN ───────────────────────────────────────────
-  const corbatin = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.05), matRojo);
-  corbatin.position.set(0, 0.14, 0.44);
-  group.add(corbatin);
-
-  // ── BRAZOS ─────────────────────────────────────────────
-  [-0.6, 0.6].forEach((x, idx) => {
-    const brazo = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.3, 4, 8), matPelaje);
-    brazo.position.set(x, -0.1, 0);
-    brazo.rotation.z = idx === 0 ? 0.6 : -0.6;
-    group.add(brazo);
-    group.userData[idx === 0 ? 'brazoIzq' : 'brazoDer'] = brazo;
-  });
-
-  // ── COLA ───────────────────────────────────────────────
-  const colaPoints = [];
-  for (let i = 0; i <= 8; i++) {
-    colaPoints.push(new THREE.Vector2(0.07 - i * 0.005, i * 0.12));
-  }
-  const cola = new THREE.Mesh(
-    new THREE.LatheGeometry(colaPoints, 8),
-    matPelaje
-  );
-  cola.position.set(-0.55, -0.7, -0.1);
-  cola.rotation.z = -0.8;
-  cola.scale.set(0.7, 0.7, 0.7);
-  group.add(cola);
-
-  group.scale.set(0.85, 0.85, 0.85);
-  return group;
-}
-
-function animateMichi() {
-  if (!michiAnimating || !michiRenderer) return;
-  requestAnimationFrame(animateMichi);
-
-  const t = michiClock ? michiClock.getElapsedTime() : 0;
-
-  if (michiGroup) {
-    // Cabeza: movimiento suave (idle)
-    const cabeza = michiGroup.userData.cabeza;
-    if (cabeza) {
-      cabeza.rotation.z = Math.sin(t * 1.1) * 0.08;
-      cabeza.position.y = 0.52 + Math.sin(t * 1.4) * 0.015;
-    }
-    // Rotación leve del grupo
-    michiGroup.rotation.y = Math.sin(t * 0.5) * 0.15;
-    michiGroup.position.y = Math.sin(t * 1.2) * 0.04;
-
-    // Brazos
-    const brazoIzq = michiGroup.userData.brazoIzq;
-    const brazoDer = michiGroup.userData.brazoDer;
-    if (brazoIzq) brazoIzq.rotation.x = Math.sin(t) * 0.1;
-    if (brazoDer) brazoDer.rotation.x = Math.sin(t + Math.PI) * 0.1;
-  }
-
-  michiRenderer.render(michiScene, michiCamera);
-}
-
-/** Cambiar color del pelaje */
-function cambiarColorMichi(hexColor) {
-  MichiConfig.color = hexColor;
-  if (michiGroup) {
-    const anterior = michiGroup;
-    michiGroup = buildMichiModel();
-    michiGroup.position.copy(anterior.position);
-    michiGroup.rotation.copy(anterior.rotation);
-    michiScene.remove(anterior);
-    michiScene.add(michiGroup);
-    anterior.traverse(objeto => {
-      objeto.geometry?.dispose();
-      objeto.material?.dispose();
-    });
+/**
+ * Animar a una expresión y volver a saludo tras duracionMs.
+ */
+function animarMichiExpresion(pose, duracionMs = 4000) {
+  aplicarExpresionMichi(pose);
+  clearTimeout(window._michiExpresionTimeout);
+  if (pose !== 'saludo') {
+    window._michiExpresionTimeout = setTimeout(() => {
+      aplicarExpresionMichi('saludo');
+    }, duracionMs);
   }
 }
 
-function toggleMichi() {
-  const burbuja = document.getElementById('michi-burbuja');
-  if (!burbuja) return;
-  michiVisible = !michiVisible;
-  burbuja.style.display = michiVisible ? 'block' : 'none';
-  if (michiVisible) michiHabla('¡Hola! ¿En qué te puedo ayudar? 🐱');
+/**
+ * Cambia el género de Michi (macho = negro, hembra = blanca).
+ * @param {'macho'|'hembra'} nuevoGenero
+ */
+function cambiarGeneroMichi(nuevoGenero) {
+  MichiConfig.genero = (nuevoGenero === 'hembra') ? 'hembra' : 'macho';
+  if (MichiConfig.nombre === 'Michi' && MichiConfig.genero === 'hembra') {
+    MichiConfig.nombre = 'Michita';
+  } else if (MichiConfig.nombre === 'Michita' && MichiConfig.genero === 'macho') {
+    MichiConfig.nombre = 'Michi';
+  }
+
+  try {
+    localStorage.setItem('mishiko_michi_genero', MichiConfig.genero);
+    localStorage.setItem('mishiko_michi_nombre', MichiConfig.nombre);
+  } catch (_) {}
+
+  aplicarExpresionMichi(michiEstado);
+
+  // Actualizar textos en UI si existen
+  const previewNombre = document.getElementById('preview-nombre');
+  if (previewNombre) previewNombre.textContent = MichiConfig.nombre;
+  const msgNombre = document.getElementById('msg-nombre');
+  if (msgNombre) msgNombre.textContent = MichiConfig.nombre;
 }
 
-// ═══════════════════════════════════════════════════════
-// VOZ – SpeechSynthesis API
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// ACCIONES CLAVE DE MICHI (CON VOZ Y EXPRESIÓN)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Acción: ANOTADO (Pulgar/dedo arriba)
+ * Cuando se agrega un producto al pedido.
+ */
+function michiAnotar(productoNombre, cantidad = 1) {
+  animarMichiExpresion('anotado', 4500);
+  const cantTexto = cantidad > 1 ? `${cantidad} ` : '';
+  const mensaje = `¡Anotado! He agregado ${cantTexto}${productoNombre} a tu comanda 😺 ¿Deseas ordenar algo más?`;
+  michiHabla(mensaje, 'anotado');
+}
+
+/**
+ * Acción: LISTO (Trayendo la comida en bandeja)
+ * Cuando el pedido ya está listo en cocina o va camino a la mesa.
+ */
+function michiComidaLista(numeroPedido = '') {
+  animarMichiExpresion('listo', 8000);
+  const numTexto = numeroPedido ? ` número ${numeroPedido}` : '';
+  const mensaje = `¡Tu pedido${numTexto} ya está listo! Va en camino a tu mesa 🍽️ ¡Buen provecho!`;
+  michiHabla(mensaje, 'listo');
+}
+
+/**
+ * Acción: SALUDO / BIENVENIDA
+ */
+function michiSaludar() {
+  animarMichiExpresion('saludo', 3000);
+  const mensaje = `¡Hola! Bienvenido a MISHIKO. Soy ${MichiConfig.nombre}, tu mesero virtual. ¿Qué se te antoja disfrutar hoy? 🐱`;
+  michiHabla(mensaje, 'saludo');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SÍNTESIS DE VOZ (SpeechSynthesis API)
+// ═══════════════════════════════════════════════════════════
 let vozSynth = window.speechSynthesis || null;
 let vozesDisponibles = [];
 
@@ -232,59 +170,69 @@ function cargarVoces() {
   return vozesDisponibles;
 }
 
-// Las voces se cargan de forma asíncrona
 if (vozSynth) {
   vozSynth.onvoiceschanged = cargarVoces;
   cargarVoces();
 }
 
 /**
- * Michi habla un mensaje en voz
+ * Michi habla un texto y activa la expresión indicada.
  * @param {string} texto
+ * @param {'saludo'|'anotado'|'listo'} expresion
  */
-function michiHabla(texto, forzar = false) {
+function michiHabla(texto, expresion = 'saludo') {
   const respuesta = document.getElementById('michi-respuesta');
   if (respuesta) respuesta.textContent = texto;
-  // Mostrar burbuja con el texto
+
   const burbuja = document.getElementById('michi-burbuja');
   const msgEl   = document.getElementById('michi-msg');
   if (burbuja && msgEl) {
     msgEl.textContent = texto;
     burbuja.style.display = 'block';
-    // Auto-ocultar después de 5s
-    clearTimeout(window._michiTimeout);
-    window._michiTimeout = setTimeout(() => {
+    clearTimeout(window._michiBubbleTimeout);
+    window._michiBubbleTimeout = setTimeout(() => {
       burbuja.style.display = 'none';
-    }, 5500);
+    }, 6000);
   }
 
-  // Voz
-  if (!MichiConfig.vozActiva && !forzar) return;
-  if (!vozSynth) return;
+  // Asegurar la expresión visual correspondiente
+  if (expresion) aplicarExpresionMichi(expresion);
+
+  if (!MichiConfig.vozActiva || !vozSynth) return;
 
   vozSynth.cancel();
   const utterance = new SpeechSynthesisUtterance(texto);
   utterance.lang   = 'es-PE';
   utterance.volume = MichiConfig.volumen;
   utterance.rate   = 1.0;
-  utterance.pitch  = 1.1;
+  // Michita tiene un tono un poco más agudo por ser gata
+  utterance.pitch  = MichiConfig.genero === 'hembra' ? 1.3 : 1.05;
 
   const voz = vozesDisponibles.find(v => v.voiceURI === MichiConfig.vozURI) || vozesDisponibles[0];
   if (voz) utterance.voice = voz;
 
+  utterance.onend = () => {
+    // Si la expresión era temporal, regresa suavemente a saludo
+    if (michiEstado !== 'saludo') {
+      setTimeout(() => aplicarExpresionMichi('saludo'), 1500);
+    }
+  };
+
   vozSynth.speak(utterance);
 }
 
-// ═══════════════════════════════════════════════════════
-// RECONOCIMIENTO DE VOZ – SpeechRecognition API
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// RECONOCIMIENTO DE VOZ (SpeechRecognition API)
+// ═══════════════════════════════════════════════════════════
 let reconocimiento = null;
 let micActivo = false;
 
 function iniciarReconocimiento(onResult) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    mostrarToast('⚠ Tu navegador no soporta reconocimiento de voz. Usa Chrome.', 'warning', 4000);
+    if (typeof mostrarToast === 'function') {
+      mostrarToast('⚠ Tu navegador no soporta voz por micrófono. Usa Chrome.', 'warning', 4000);
+    }
     return;
   }
 
@@ -292,6 +240,9 @@ function iniciarReconocimiento(onResult) {
     detenerReconocimiento();
     return;
   }
+
+  // Michi prestando atención
+  aplicarExpresionMichi('saludo');
 
   reconocimiento = new SpeechRecognition();
   reconocimiento.lang = 'es-PE';
@@ -303,15 +254,12 @@ function iniciarReconocimiento(onResult) {
     micActivo = true;
     vozSynth?.cancel();
     actualizarBtnMic(true);
+    aplicarExpresionMichi('saludo');
   };
 
   reconocimiento.onresult = (event) => {
-    const transcript = Array.from(event.results)
-      .map(r => r[0].transcript)
-      .join('');
-
-    // Mostrar texto reconocido
-    const textoEl = document.getElementById('texto-reconocido');
+    const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
+    const textoEl = document.getElementById('texto-reconocido') || document.getElementById('texto-reconocido-chat');
     if (textoEl instanceof HTMLInputElement) textoEl.value = transcript;
     else if (textoEl) textoEl.textContent = transcript;
 
@@ -321,12 +269,9 @@ function iniciarReconocimiento(onResult) {
   };
 
   reconocimiento.onerror = (e) => {
-    console.warn('Error de reconocimiento:', e.error);
+    console.warn('Error reconocimiento:', e.error);
     micActivo = false;
     actualizarBtnMic(false);
-    if (e.error === 'not-allowed') {
-      mostrarToast('🎤 Permiso de micrófono denegado.', 'error');
-    }
   };
 
   reconocimiento.onend = () => {
@@ -347,122 +292,226 @@ function actualizarBtnMic(activo) {
   const btn = document.getElementById('btn-mic');
   if (!btn) return;
   btn.textContent = activo ? '🔴 Escuchando...' : '🎤 Hablar con Michi';
-  btn.style.background = activo ? 'var(--error)' : 'var(--primary)';
+  btn.style.background = activo ? 'var(--mishiko-error, #dc2626)' : 'var(--mishiko-primary, #FF6B35)';
 }
 
+// ═══════════════════════════════════════════════════════════
+// COMPRENSIÓN SEMÁNTICA CON sentence-transformers/all-MiniLM-L6-v2
+// ═══════════════════════════════════════════════════════════
 function normalizarConsulta(texto) {
   return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function coincidenciasMichi(texto, productos) {
+  const stopWords = ['el', 'la', 'los', 'las', 'de', 'con', 'sin', 'un', 'una', 'por', 'favor'];
   const palabras = nombre => normalizarConsulta(nombre).split(' ')
-    .filter(p => p && !['el', 'la', 'los', 'las'].includes(p))
+    .filter(p => p && !stopWords.includes(p))
     .map(p => /[aeiou]s$/.test(p) ? p.slice(0, -1) : p);
   const consulta = palabras(texto);
   if (consulta.length === 0) return [];
   const exactos = productos.filter(p => palabras(p.nombre).join(' ') === consulta.join(' '));
-  return exactos.length ? exactos : productos.filter(p => {
+  if (exactos.length) return exactos;
+  return productos.filter(p => {
     const nombre = palabras(p.nombre);
-    return consulta.every(palabra => nombre.includes(palabra));
+    return consulta.some(palabra => nombre.includes(palabra));
   });
 }
 
+/**
+ * Procesa la orden o consulta del usuario usando IA semántica all-MiniLM-L6-v2
+ */
 async function procesarInstruccionVoz(instruccion) {
-  const texto = normalizarConsulta(instruccion).replace(/^michi\s+/, '');
+  const texto = normalizarConsulta(instruccion).replace(/^michi\s+/, '').replace(/^michita\s+/, '');
   if (!texto) return;
-  const agregar = texto.match(/^(?:quiero|agrega|dame|pon)\s+(.+)/);
-  if (agregar) {
-    const numeros = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
-    const segmentos = agregar[1].split(/\s+y\s+(?=(?:un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s)/);
-    const pedido = [];
-    for (const segmento of segmentos) {
-      const [primera, ...resto] = segmento.split(' ');
-      const tieneCantidad = /^\d+$/.test(primera) || Object.hasOwn(numeros, primera);
-      const cantidad = tieneCantidad ? (numeros[primera] ?? Number(primera)) : 1;
-      const producto = tieneCantidad ? resto.join(' ') : segmento;
-      const opciones = coincidenciasMichi(producto, todosProductos);
-      if (!Number.isSafeInteger(cantidad) || cantidad < 1 || cantidad > 99) {
-        return michiHabla('Indica una cantidad entre 1 y 99 por producto.');
+
+  // 1. Clasificar intención con sentence-transformers/all-MiniLM-L6-v2 si está listo
+  let intencion = 'HELP';
+  if (window.MichiAI && window.MichiAI.estaListo()) {
+    const res = await window.MichiAI.clasificarIntencion(texto);
+    intencion = res.intencion;
+    console.log(`[Michi] Intención clasificada (MiniLM): ${intencion} (${(res.confianza * 100).toFixed(1)}%)`);
+  } else {
+    // Clasificador por reglas fallback
+    const t = texto.toLowerCase();
+    if (/quiero|dame|agrega|pon|traeme|trae|comprar|ordenar|pido/.test(t)) intencion = 'ORDER';
+    else if (/recomiend|sugi|especial|popular|mas pedido|rico/.test(t))   intencion = 'RECOMMEND';
+    else if (/cuanto cuesta|precio|vale/.test(t))                         intencion = 'PRICE';
+    else if (/estado|como va|ya salio|listo mi pedido/.test(t))            intencion = 'STATUS';
+    else if (/carrito|mi orden|total/.test(t))                            intencion = 'CART';
+  }
+
+  // 2. Ejecutar según intención
+  switch (intencion) {
+    case 'ORDER':
+      return await procesarPedidoVoz(texto);
+    case 'RECOMMEND':
+      return await procesarRecomendacionVoz(texto);
+    case 'PRICE':
+      return await procesarPrecioVoz(texto);
+    case 'STATUS':
+      return await procesarEstadoVoz();
+    case 'CART':
+      if (typeof toggleCarrito === 'function') {
+        if (!document.getElementById('panel-carrito')?.classList.contains('open')) toggleCarrito();
       }
-      if (opciones.length !== 1) {
-        return michiHabla(opciones.length
-          ? `Encontré ${opciones.map(p => p.nombre).join(', ')}. Indica cuál quieres.`
-          : `No encontré “${producto}” en el menú. Escribe o dicta el nombre del producto.`);
-      }
-      if (!opciones[0].disponible) return michiHabla(`${opciones[0].nombre} está agotado.`);
-      pedido.push({ producto: opciones[0], cantidad });
-    }
-    pedido.forEach(({ producto, cantidad }) => Cart.add(producto, cantidad));
-    renderCarritoItems();
-    return michiHabla('Agregué los productos al carrito. Revísalos antes de confirmar tu pedido.');
+      return michiHabla(
+        typeof Cart !== 'undefined' && Cart.count()
+          ? 'Aquí tienes tu carrito de compras 🛒 ¿Confirmamos el pedido?'
+          : 'Tu carrito está vacío todavía. ¿Qué te gustaría pedir?',
+        'saludo'
+      );
+    default:
+      return michiHabla(
+        '¡Puedo tomar tu pedido, recomendarte platillos o consultar precios! Prueba con "quiero unas gyozas" o "qué me recomiendas".',
+        'saludo'
+      );
   }
-
-  const eliminar = texto.match(/^(?:elimina|quita|saca)\s+(.+)/);
-  if (eliminar) {
-    const opciones = coincidenciasMichi(eliminar[1], Cart.get());
-    if (opciones.length !== 1) return michiHabla('Indica el nombre exacto del producto en tu carrito.');
-    Cart.remove(opciones[0].id);
-    renderCarritoItems();
-    return michiHabla(`Quité ${opciones[0].nombre} de tu carrito.`);
-  }
-
-  const precio = texto.match(/(?:cuanto cuesta|precio de)\s+(.+)/);
-  if (precio) {
-    const opciones = coincidenciasMichi(precio[1], todosProductos);
-    return michiHabla(opciones.length === 1
-      ? `${opciones[0].nombre} cuesta ${Cart.fmt(opciones[0].precio)}.`
-      : 'Indica el nombre exacto del producto para consultar su precio.');
-  }
-
-  if (texto.includes('estado') && texto.includes('pedido')) {
-    if (!pedidoConfirmadoId) return michiHabla('Consulta tu número de pedido en la página de seguimiento.');
-    try {
-      const pedido = await api.get(`/pedidos/${pedidoConfirmadoId}`);
-      return michiHabla(`El pedido ${pedido.numeroPedido} está ${pedido.estado.toLowerCase().replaceAll('_', ' ')}.`);
-    } catch (error) {
-      return michiHabla('No pude consultar el estado. Vuelve a intentarlo.');
-    }
-  }
-
-  if (texto.includes('total')) {
-    return michiHabla(`El total de tu carrito es ${Cart.fmt(Cart.total())} con IGV.`);
-  }
-
-  if (texto.includes('carrito')) {
-    if (!document.getElementById('panel-carrito').classList.contains('open')) toggleCarrito();
-    return michiHabla(Cart.count() ? 'Aquí tienes tu carrito.' : 'Tu carrito está vacío.');
-  }
-
-  const categoria = Array.from(document.querySelectorAll('.categoria-chip'))
-    .find(chip => texto.endsWith(normalizarConsulta(chip.textContent)));
-  if (categoria) {
-    categoria.click();
-    return michiHabla(`Mostrando ${categoria.textContent}.`);
-  }
-
-  michiHabla('Prueba con “quiero dos limonadas”, “muéstrame mi carrito” o “¿cuánto cuesta la limonada?”.');
 }
 
-// ═══════════════════════════════════════════════════════
-// INICIALIZACIÓN
-// ═══════════════════════════════════════════════════════
+async function procesarPedidoVoz(texto) {
+  const numeros = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+  const match = texto.match(/(?:quiero|dame|agrega|pon|traeme|trae|comprar|ordenar|pido)\s+(.+)/);
+  const consulta = match ? match[1] : texto;
+
+  const prods = (typeof todosProductos !== 'undefined' && todosProductos.length) ? todosProductos : [];
+  let opciones = coincidenciasMichi(consulta, prods);
+
+  // Si no coincide por texto, usar búsqueda semántica MiniLM
+  if (opciones.length === 0 && window.MichiAI && window.MichiAI.estaListo()) {
+    const semMatch = await window.MichiAI.encontrarProductoMasSimilar(consulta, prods);
+    if (semMatch && semMatch.similitud > 0.45) {
+      opciones = [semMatch.producto];
+      console.log(`[Michi] Match semántico all-MiniLM-L6-v2: ${semMatch.producto.nombre}`);
+    }
+  }
+
+  if (opciones.length === 0) {
+    return michiHabla(`No encontré "${consulta}" en el menú. Revisa la carta o pídeme una recomendación 😺`, 'saludo');
+  }
+
+  const prod = opciones[0];
+  if (!prod.disponible) {
+    return michiHabla(`El platillo ${prod.nombre} está agotado por el momento. ¿Te recomiendo una alternativa?`, 'saludo');
+  }
+
+  // Extraer cantidad
+  const primerToken = consulta.trim().split(' ')[0];
+  const cantidad = /^\d+$/.test(primerToken) ? parseInt(primerToken, 10) : (numeros[primerToken] ?? 1);
+
+  if (typeof Cart !== 'undefined') {
+    Cart.add(prod, cantidad);
+    if (typeof renderCarritoItems === 'function') renderCarritoItems();
+  }
+
+  // ¡Anotado con pulgar arriba!
+  michiAnotar(prod.nombre, cantidad);
+}
+
+async function procesarRecomendacionVoz(texto) {
+  const prods = (typeof todosProductos !== 'undefined' && todosProductos.length) ? todosProductos : [];
+  if (prods.length === 0) return michiHabla('Cargando el menú en vivo... ¡Vuelve a preguntarme en un segundo!', 'saludo');
+
+  let recomendados = [];
+  if (window.MichiAI && window.MichiAI.estaListo()) {
+    const hits = await window.MichiAI.obtenerRecomendaciones(texto || 'plato principal delicioso especial', prods, 3);
+    recomendados = hits.map(h => h.producto);
+  } else {
+    recomendados = prods.filter(p => p.disponible).slice(0, 3);
+  }
+
+  const nombres = recomendados.map(p => p.nombre).join(', ');
+  // Expresión de listo / sirviendo delicias
+  michiHabla(`¡Lo más pedido de la casa es: ${nombres}! Todo fresquito y delicioso 😺`, 'listo');
+}
+
+async function procesarPrecioVoz(texto) {
+  const match = texto.match(/(?:cuanto cuesta|precio|vale)\s+(.+)/);
+  const consulta = match ? match[1] : texto;
+  const prods = (typeof todosProductos !== 'undefined' && todosProductos.length) ? todosProductos : [];
+
+  let opciones = coincidenciasMichi(consulta, prods);
+  if (opciones.length === 0 && window.MichiAI && window.MichiAI.estaListo()) {
+    const semMatch = await window.MichiAI.encontrarProductoMasSimilar(consulta, prods);
+    if (semMatch) opciones = [semMatch.producto];
+  }
+
+  if (opciones.length >= 1) {
+    const fmt = typeof Cart !== 'undefined' ? Cart.fmt : (p) => `S/ ${p.toFixed(2)}`;
+    return michiHabla(`${opciones[0].nombre} cuesta ${fmt(opciones[0].precio)}.`, 'saludo');
+  }
+  return michiHabla('¿De qué platillo deseas consultar el precio?', 'saludo');
+}
+
+async function procesarEstadoVoz() {
+  const pedidoId = typeof pedidoConfirmadoId !== 'undefined' ? pedidoConfirmadoId : null;
+  if (!pedidoId) {
+    return michiHabla('Puedes consultar tu estado ingresando tu código en la página de Seguimiento 📍', 'saludo');
+  }
+  try {
+    const p = await api.get(`/pedidos/${pedidoId}`);
+    if (p.estado === 'LISTO' || p.estado === 'ENTREGADO') {
+      michiComidaLista(p.numeroPedido);
+    } else {
+      michiHabla(`Tu pedido ${p.numeroPedido} está ${p.estado.toLowerCase().replace('_', ' ')}. ¡Ya falta poco!`, 'anotado');
+    }
+  } catch (_) {
+    michiHabla('No pude consultar tu pedido en este momento. Intenta en la sección de seguimiento.', 'saludo');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INICIALIZACIÓN DEL WIDGET AL CARGAR LA PÁGINA
+// ═══════════════════════════════════════════════════════════
+function toggleMichi() {
+  const burbuja = document.getElementById('michi-burbuja');
+  if (!burbuja) return;
+  michiVisible = !michiVisible;
+  burbuja.style.display = michiVisible ? 'block' : 'none';
+  if (michiVisible) {
+    michiSaludar();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  initMichi3D('michi-canvas');
+  // Cargar configuración persistida
+  const generoGuardado = localStorage.getItem('mishiko_michi_genero');
+  if (generoGuardado) MichiConfig.genero = generoGuardado;
 
+  const nombreGuardado = localStorage.getItem('mishiko_michi_nombre');
+  if (nombreGuardado) MichiConfig.nombre = nombreGuardado;
+
+  // Configurar imagen inicial
+  aplicarExpresionMichi('saludo');
+
+  // Widget flotante clic
+  const widget = document.getElementById('michi-widget') || document.getElementById('michi-img-wrapper');
+  if (widget) {
+    widget.addEventListener('click', toggleMichi);
+  }
+
+  // Si existe formulario de comandos en página
   const formMichi = document.getElementById('form-michi');
-  formMichi?.addEventListener('submit', event => {
-    event.preventDefault();
-    procesarInstruccionVoz(document.getElementById('texto-reconocido').value);
-  });
+  if (formMichi) {
+    formMichi.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('texto-reconocido') || document.getElementById('texto-reconocido-chat');
+      if (input && input.value) procesarInstruccionVoz(input.value);
+    });
+  }
 
-  // Botón de micrófono si existe
+  // Si existe botón de micrófono
   const btnMic = document.getElementById('btn-mic');
   if (btnMic) {
     btnMic.addEventListener('click', () => {
-      iniciarReconocimiento((instruccion) => {
-        procesarInstruccionVoz(instruccion);
-      });
+      iniciarReconocimiento((texto) => procesarInstruccionVoz(texto));
     });
   }
+
+  // Exponer globalmente
+  window.michiAnotar = michiAnotar;
+  window.michiComidaLista = michiComidaLista;
+  window.michiSaludar = michiSaludar;
+  window.cambiarGeneroMichi = cambiarGeneroMichi;
+  window.aplicarExpresionMichi = aplicarExpresionMichi;
 });
