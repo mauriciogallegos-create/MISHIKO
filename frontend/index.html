@@ -97,8 +97,9 @@
   <!-- Navbar -->
   <nav class="navbar">
     <div class="navbar-brand">
-      <span class="logo-icon">🐱</span>
-      <span class="logo-text">MISHIKO</span>
+      <a href="index.html" style="display:flex;align-items:center;text-decoration:none">
+        <img src="assets/logo.png" alt="MISHIKO" style="height:38px;object-fit:contain">
+      </a>
     </div>
     <div style="display:flex;align-items:center;gap:1rem">
       <a href="menu.html?restauranteId=1&mesa=1&mesaId=1" style="color:var(--secondary);font-weight:500;font-size:0.95rem">Menú</a>
@@ -109,7 +110,10 @@
 
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-cat">🐱</div>
+    <div class="hero-cat" style="display:flex;justify-content:center;margin-bottom:1rem">
+      <img src="assets/michi/michi-macho-saludo.png" alt="Michi mesero"
+           style="width:140px;height:140px;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(255,107,53,0.35));animation:michiFloat 2.8s ease-in-out infinite">
+    </div>
     <h1 class="hero-title">Bienvenido a <span>MISHIKO</span></h1>
     <p class="hero-subtitle">Tu experiencia gastronómica digital. Pide desde tu mesa, sigue tu orden en tiempo real.</p>
     <div class="hero-actions">
