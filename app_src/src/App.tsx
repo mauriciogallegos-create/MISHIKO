@@ -156,11 +156,29 @@ export default function App() {
     };
   }, []);
 
+  const playToastSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.25);
+    } catch (_) {}
+  };
+
   const showToast = (msg: string) => {
+    playToastSound();
     setToastMessage(msg);
     window.setTimeout(() => {
       setToastMessage((current) => (current === msg ? null : current));
-    }, 3400);
+    }, 3800);
   };
 
   // Active order for the current diner table
@@ -831,14 +849,25 @@ export default function App() {
         </div>
       )}
 
-      {/* Non-blocking Live Toast Feedback */}
+      {/* Non-blocking Live Toast Feedback con Branding MISHIKO */}
       {toastMessage && (
         <div
           role="status"
           aria-live="polite"
-          className="fixed top-20 right-4 z-50 px-4 py-3 rounded-xl bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold shadow-lg"
+          className="fixed top-20 right-4 z-50 flex items-start gap-3 p-3.5 pr-5 rounded-2xl bg-stone-900/95 dark:bg-stone-900/95 text-stone-100 border border-amber-500/40 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-3 duration-200 max-w-sm"
         >
-          {toastMessage}
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+            <img src="./assets/logo.png" alt="MISHIKO" className="w-5 h-5 object-contain" />
+          </div>
+          <div className="space-y-0.5">
+            <div className="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+              <span>MISHIKO Notificación</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            </div>
+            <div className="text-xs font-medium text-stone-200 leading-snug">
+              {toastMessage}
+            </div>
+          </div>
         </div>
       )}
     </div>
