@@ -74,7 +74,30 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<'pedidos' | 'alertas'>('pedidos');
   const [receiptPreviewOpen, setReceiptPreviewOpen] = useState(false);
-  const [waiterCalled, setWaiterCalled] = useState(false);
+  const [notificationToast, setNotificationToast] = useState<string | null>(null);
+
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch (_) {}
+  };
+
+  const triggerTestNotification = () => {
+    playNotificationSound();
+    setNotificationToast('¡Tu pedido ha avanzado a preparación en cocina a fuego vivo! 🔥');
+    setTimeout(() => setNotificationToast(null), 4000);
+  };
 
   const totalAmount = activeOrder.items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
@@ -161,6 +184,7 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
             onClick={() => {
               setSubTab('alertas');
               onMarkAlertsRead();
+              playNotificationSound();
             }}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-colors min-h-[40px] whitespace-nowrap ${
               subTab === 'alertas'
@@ -168,8 +192,8 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
                 : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
             }`}
           >
-            <Bell className="w-4 h-4" />
-            <span>Michi Alertas ({unreadAlerts || alerts.length})</span>
+            <Bell className="w-4 h-4 text-amber-500" />
+            <span>MISHIKO Alertas ({unreadAlerts || alerts.length})</span>
           </button>
         </div>
 
@@ -178,27 +202,85 @@ export const DinerOrderScreen: React.FC<DinerOrderScreenProps> = ({
         </div>
       </div>
 
+      {/* Floating Live Notification Toast */}
+      {notificationToast && (
+        <div className="fixed top-20 right-4 z-50 p-4 rounded-2xl bg-stone-900 text-white shadow-2xl border-2 border-amber-400/80 flex items-center gap-3 animate-bounce max-w-sm">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl shrink-0">
+            🐱
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+              <span>MISHIKO Notificación</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            </div>
+            <div className="text-xs font-medium text-stone-100 mt-0.5">{notificationToast}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotificationToast(null)}
+            className="text-stone-400 hover:text-white ml-2 text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {subTab === 'alertas' ? (
         <div className="max-w-3xl space-y-4">
-          <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5">
-            <h2 className="text-lg font-bold text-stone-900 dark:text-stone-50">
-              Notificaciones de Mesa #{activeOrder.tableNumber}
-            </h2>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-              Actualizaciones en vivo enviadas desde Cocina KDS y Michi Sommelier.
-            </p>
-            <ul className="mt-4 divide-y divide-stone-100 dark:divide-stone-800">
+          <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-100 dark:border-stone-800 pb-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src="./assets/logo.png"
+                  alt="MISHIKO"
+                  className="h-8 w-auto object-contain filter drop-shadow-sm"
+                />
+                <div>
+                  <h2 className="text-lg font-bold text-stone-900 dark:text-stone-50 flex items-center gap-2">
+                    <span>MISHIKO Notificaciones en Vivo</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-[#9E3304] dark:bg-amber-950/60 dark:text-amber-300">
+                      Mesa #{activeOrder.tableNumber}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                    Actualizaciones de cocina KDS y Michi transmitidas directamente a tu mesa.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={triggerTestNotification}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-xs font-semibold text-[#9E3304] dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>🔔 Probar Alerta Sonora</span>
+              </button>
+            </div>
+
+            <ul className="divide-y divide-stone-100 dark:divide-stone-800">
               {alerts.map((alert) => (
-                <li key={alert.id} className="py-3.5 flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                      {alert.title}
-                    </h3>
-                    <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
-                      {alert.detail}
-                    </p>
+                <li key={alert.id} className="py-4 flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-[#9E3304] dark:text-amber-400 flex items-center justify-center shrink-0 text-sm">
+                      {alert.title.includes('Ramen') ? '🍜' : alert.title.includes('Gyoza') ? '🥟' : '🍷'}
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#9E3304] dark:text-amber-400">
+                          MISHIKO {alert.title.includes('Sommelier') ? 'Sommelier' : 'Cocina KDS'}
+                        </span>
+                        <span className="text-[10px] text-stone-400">· En Vivo</span>
+                      </div>
+                      <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                        {alert.title}
+                      </h3>
+                      <p className="text-xs text-stone-600 dark:text-stone-400">
+                        {alert.detail}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-xs text-stone-400 tabular-nums shrink-0">
+                  <span className="text-xs text-stone-400 font-mono tabular-nums shrink-0 mt-1">
                     {alert.time}
                   </span>
                 </li>
