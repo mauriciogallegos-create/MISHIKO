@@ -83,6 +83,79 @@ export default function App() {
     }
   }, [isNightMode]);
 
+  // Sincronización en vivo KDS en laptops distintas (LAN & Wi-Fi)
+  useEffect(() => {
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('mishiko_kds_sync');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'NEW_ORDER') {
+            const incoming: KitchenOrder = event.data.order;
+            setOrders((prev) => {
+              if (prev.some((o) => o.id === incoming.id)) return prev;
+              return [incoming, ...prev];
+            });
+            showToast(`¡Nueva comanda ${incoming.shortCode} recibida en Cocina KDS! 👨‍🍳`);
+          }
+        };
+      }
+    } catch (_) {}
+
+    const pollId = window.setInterval(async () => {
+      try {
+        const res = await fetch('/api/cocina/pedidos');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setOrders((prev) => {
+              const prevIds = new Set(prev.map((p) => p.id));
+              const nuevos: KitchenOrder[] = [];
+              data.forEach((p: any) => {
+                const orderId = `#ORD-${p.numeroPedido || p.id}`;
+                if (!prevIds.has(orderId)) {
+                  nuevos.push({
+                    id: orderId,
+                    shortCode: `#${p.numeroPedido || p.id}`,
+                    ticketControl: `#TK-${p.numeroPedido || p.id}-2026`,
+                    tableNumber: String(p.mesaNumero || '04').padStart(2, '0'),
+                    tableLabel: `Mesa ${String(p.mesaNumero || '04').padStart(2, '0')}`,
+                    zone: 'Salón Principal',
+                    dinerName: 'Comensal en Mesa',
+                    waiterName: 'Carlos V.',
+                    createdAtLabel: 'Hace un momento',
+                    minutesAgo: 0,
+                    step: p.estado === 'ENTREGADO' ? 5 : p.estado === 'LISTO' ? 4 : p.estado === 'EN_PREPARACION' ? 3 : 1,
+                    verificationId: `VERIF-M04-${8900 + (p.id || 1)}`,
+                    items: (p.detalles || []).map((d: any, idx: number) => ({
+                      id: `k-${p.id}-${idx}`,
+                      dishId: 'dish-custom',
+                      name: d.productoNombre || 'Plato MISHIKO',
+                      quantity: d.cantidad || 1,
+                      station: 'Estación Caliente' as const,
+                      completed: false,
+                      modifiers: d.notas ? [d.notas] : [],
+                    })),
+                  });
+                }
+              });
+              if (nuevos.length > 0) {
+                showToast(`🔔 ${nuevos.length} comanda(s) nueva(s) en Cocina KDS`);
+                return [...nuevos, ...prev];
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (_) {}
+    }, 3500);
+
+    return () => {
+      window.clearInterval(pollId);
+      if (bc) bc.close();
+    };
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     window.setTimeout(() => {
@@ -235,6 +308,33 @@ export default function App() {
     setCart([]);
     setDinerTab('pedido');
     showToast(`Comanda ${shortCode} enviada a Cocina KDS`);
+
+    // Sincronizar por BroadcastChannel con otras pestañas/ventanas KDS
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('mishiko_kds_sync');
+        bc.postMessage({ type: 'NEW_ORDER', order: newOrder });
+      }
+    } catch (_) {}
+
+    // Sincronizar vía REST con el backend Spring Boot para laptops distintas en red
+    try {
+      fetch('/api/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restauranteId: 1,
+          mesaId: Number(activeTableNumber) || 4,
+          notas: `Comanda de Mesa #${activeTableNumber}`,
+          detalles: newKdsItems.map((it) => ({
+            productoId: 1,
+            cantidad: it.quantity,
+            precioUnitario: 28.0,
+            notas: it.modifiers?.join(', ') || it.name,
+          })),
+        }),
+      }).catch(() => {});
+    } catch (_) {}
   };
 
   const handleRepeatVisit = (visit: PastVisit) => {

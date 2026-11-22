@@ -66,6 +66,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/pedidos", "/api/pedidos").permitAll()
                 .requestMatchers(HttpMethod.GET, "/pedidos/numero/**", "/api/pedidos/numero/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/pedidos/{id}", "/api/pedidos/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/cocina/**", "/api/cocina/**").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/pedidos/*/estado", "/api/pedidos/*/estado").permitAll()
                 .requestMatchers(HttpMethod.GET, "/comprobantes/**", "/api/comprobantes/**").permitAll()
                 // Swagger UI
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
