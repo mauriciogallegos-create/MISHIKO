@@ -264,7 +264,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     return sum + (m.dish.price + delta) * m.quantity;
   }, 0);
 
-  // Sonido SFX maullido dulce Nyan~ con Web Audio API (100% gratuito)
+  // SFX Web Audio API: Sonidos de campanilla y efectos de personajes Re:Zero y Anime (100% gratuito)
   const playNyanSound = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -283,8 +283,65 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     } catch (_) {}
   };
 
+  // Campanilla de doncella cristalina para Rem (Re:Zero)
+  const playRemChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      [880, 1318.51, 1760].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.07);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime + i * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.07 + 0.32);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + i * 0.07);
+        osc.stop(audioCtx.currentTime + i * 0.07 + 0.32);
+      });
+    } catch (_) {}
+  };
+
+  // Destello mágico de media elfa para Emilia (Re:Zero)
+  const playEmiliaSparkle = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.05);
+        gain.gain.setValueAtTime(0.06, audioCtx.currentTime + i * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.05 + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + i * 0.05);
+        osc.stop(audioCtx.currentTime + i * 0.05 + 0.22);
+      });
+    } catch (_) {}
+  };
+
+  // Acorde de energía shonen para Natsuki Subaru (Re:Zero)
+  const playSubaruFanfare = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      [440, 554.37, 659.25].forEach((freq) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.22);
+      });
+    } catch (_) {}
+  };
+
   // Síntesis de voz con soporte avanzado para Re:Zero (Rem, Emilia, Subaru), Anime y diferentes estilos gratis
-  const speakLine = (line: string, customRate?: number) => {
+  const speakLine = (line: string, customRate?: number, overrideStyle?: MichiVoiceType) => {
     if (!config.voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
     }
@@ -292,62 +349,70 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(line);
       utterance.lang = 'es-PE';
-      utterance.rate = customRate || config.voiceRate || 1.0;
 
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
 
-      // Asignar tono y timbre según estilo (Re:Zero Rem, Emilia, Subaru, Anime Kawaii, Shonen, Chibi, etc.)
-      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'rem' : 'energico');
+      // Asignar tono y timbre exacto según el personaje
+      const voiceStyle = overrideStyle || config.voiceType || (catGender === 'hembra' ? 'rem' : 'energico');
+      let chosenPitch = 1.0;
+      let chosenRate = customRate || config.voiceRate || 1.0;
+
       if (voiceStyle === 'rem') {
-        playNyanSound();
-        utterance.pitch = config.voicePitch || 1.38; // Rem: dulce, fiel, respetuosa y tierna
-        utterance.rate = config.voiceRate || 1.04;
+        playRemChime();
+        chosenPitch = 1.45; // Rem: tono dulce, suave y devota maid
+        chosenRate = 1.02;
       } else if (voiceStyle === 'emilia') {
-        playNyanSound();
-        utterance.pitch = config.voicePitch || 1.30; // Emilia: suave, noble, media elfa
-        utterance.rate = config.voiceRate || 1.02;
+        playEmiliaSparkle();
+        chosenPitch = 1.30; // Emilia: tono noble, suave y media elfa
+        chosenRate = 0.98;
       } else if (voiceStyle === 'subaru') {
-        utterance.pitch = config.voicePitch || 1.10; // Subaru: shonen enérgico e hiperactivo
-        utterance.rate = config.voiceRate || 1.18;
+        playSubaruFanfare();
+        chosenPitch = 1.05; // Subaru: tono shonen rápido, enérgico y seguro
+        chosenRate = 1.18;
       } else if (voiceStyle === 'anime-kawaii') {
         playNyanSound();
-        utterance.pitch = config.voicePitch || 1.48; // Agudo anime waifu/neko
-        utterance.rate = config.voiceRate || 1.12;
+        chosenPitch = 1.50; // Agudo anime waifu/neko
+        chosenRate = 1.12;
       } else if (voiceStyle === 'anime-shonen') {
-        utterance.pitch = config.voicePitch || 1.15; // Shonen culinario enérgico
-        utterance.rate = config.voiceRate || 1.15;
+        chosenPitch = 1.15; // Shonen culinario enérgico
+        chosenRate = 1.15;
       } else if (voiceStyle === 'chibi') {
         playNyanSound();
-        utterance.pitch = config.voicePitch || 1.65; // Chibi súper tierno
-        utterance.rate = config.voiceRate || 1.18;
+        chosenPitch = 1.65; // Chibi súper tierno
+        chosenRate = 1.18;
       } else if (voiceStyle === 'tom') {
-        utterance.pitch = 1.35; // Estilo Talking Tom divertido
-        utterance.rate = 1.08;
+        chosenPitch = 1.35; // Talking Tom divertido
+        chosenRate = 1.08;
       } else if (voiceStyle === 'dulce' || catGender === 'hembra') {
-        utterance.pitch = config.voicePitch || 1.25; // Michita: dulce, femenino y alegre
-      } else if (voiceStyle === 'energico' || catGender === 'macho') {
-        utterance.pitch = config.voicePitch || 1.05; // Michi: varonil, claro y entusiasta
+        chosenPitch = 1.25; // Michita: dulce y alegre
+        chosenRate = 1.0;
       } else {
-        utterance.pitch = 1.0;
+        chosenPitch = 1.05; // Michi: varonil y claro
+        chosenRate = 1.0;
       }
+
+      utterance.pitch = chosenPitch;
+      utterance.rate = chosenRate;
 
       // Si el usuario seleccionó una voz específica del navegador
       if (selectedVoiceName && systemVoices.length > 0) {
         const found = systemVoices.find((v) => v.name === selectedVoiceName);
         if (found) utterance.voice = found;
       } else if (systemVoices.length > 0) {
-        // Asignación inteligente de voz española según género o personaje
-        if (catGender === 'hembra' || voiceStyle === 'rem' || voiceStyle === 'emilia') {
+        // Asignación inteligente de voz según personaje
+        if (catGender === 'hembra' || voiceStyle === 'rem' || voiceStyle === 'emilia' || voiceStyle === 'anime-kawaii' || voiceStyle === 'chibi' || voiceStyle === 'dulce') {
           const female = systemVoices.find((v) =>
-            /sabina|helena|laura|paulina|monica|female|mujer|maria|zira/i.test(v.name),
-          ) || systemVoices.find((v) => v.lang.startsWith('es'));
+            /(salma|dalia|sabina|helena|laura|paulina|monica|paloma|elena|carmen|marta|conchita|lucia|female|mujer|maria)/i.test(v.name) && v.lang.startsWith('es'),
+          ) || systemVoices.find((v) => /(female|mujer)/i.test(v.name))
+            || systemVoices.find((v) => v.lang.startsWith('es'));
           if (female) utterance.voice = female;
         } else {
           const male = systemVoices.find((v) =>
-            /raul|pablo|jorge|male|hombre|diego|carlos/i.test(v.name),
-          ) || systemVoices.find((v) => v.lang.startsWith('es'));
+            /(jorge|alvaro|raul|pablo|enrique|diego|carlos|pedro|mateo|male|hombre)/i.test(v.name) && v.lang.startsWith('es'),
+          ) || systemVoices.find((v) => /(male|hombre)/i.test(v.name))
+            || systemVoices.find((v) => v.lang.startsWith('es'));
           if (male) utterance.voice = male;
         }
       }
@@ -749,6 +814,56 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     setTimeout(() => setIsPlayingGesture(false), 1200 / config.gestureSpeed);
   };
 
+  const switchToCharacter = (char: 'rem' | 'emilia' | 'subaru' | 'anime-kawaii' | 'michi') => {
+    let newName = 'Rem 💙';
+    let gender: MichiGender = 'hembra';
+    let voiceType: MichiVoiceType = 'rem';
+    let greeting = '';
+
+    if (char === 'rem') {
+      newName = 'Rem 💙';
+      gender = 'hembra';
+      voiceType = 'rem';
+      greeting = `¡Konnichiwa! Soy Rem, su fiel sirvienta en MISHIKO 💙. Rem cuidará con devoción cada platillo de su Mesa #${tableNumber}. ¡Que disfrute mucho su visita!`;
+    } else if (char === 'emilia') {
+      newName = 'Emilia 💜';
+      gender = 'hembra';
+      voiceType = 'emilia';
+      greeting = `¡Hola! Soy Emilia, la media elfa 💜. Es un honor atender tu Mesa #${tableNumber}. ¡Déjame recomendarte los platillos más mágicos y deliciosos!`;
+    } else if (char === 'subaru') {
+      newName = 'Subaru 🧡';
+      gender = 'macho';
+      voiceType = 'subaru';
+      greeting = `¡Irasshai! ¡Natsuki Subaru presente en MISHIKO! 🧡 ¡El mesero que no le teme a nada! ¿Qué se te antoja disfrutar hoy, compañero?`;
+    } else if (char === 'anime-kawaii') {
+      newName = 'Michita-chan 🌸';
+      gender = 'hembra';
+      voiceType = 'anime-kawaii';
+      greeting = `¡Konnichiwa, senpai! Nyaaan~ 🐾 Soy Michita-chan, tu mesera waifu en MISHIKO. ¡Dime qué se te antoja pedir hoy!`;
+    } else {
+      newName = 'Michi 🐱';
+      gender = 'macho';
+      voiceType = 'energico';
+      greeting = `¡Miau! Hola comensal, soy Michi tu mesero virtual de MISHIKO en Mesa #${tableNumber}. ¿Qué comanda enviamos a cocina hoy?`;
+    }
+
+    const updatedConfig: MichiConfig = {
+      ...config,
+      name: newName,
+      gender,
+      voiceType,
+      voicePitch: voiceType === 'rem' ? 1.45 : voiceType === 'emilia' ? 1.30 : voiceType === 'subaru' ? 1.05 : 1.1,
+      voiceRate: voiceType === 'subaru' ? 1.18 : 1.02,
+      voiceEnabled: true,
+    };
+    onUpdateConfig(updatedConfig);
+    setDraftConfig(updatedConfig);
+    setAssistantReply(greeting);
+    setMichiPose('saludo');
+    addChatMessage('michi', greeting);
+    speakLine(greeting, undefined, voiceType);
+  };
+
   const handleTestVoice = () => {
     const vType = config.voiceType || (catGender === 'hembra' ? 'rem' : 'energico');
     let testLine = '';
@@ -863,6 +978,69 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                   >
                     {config.voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                     <span>Voz {config.voiceEnabled ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Selector Rápido de Personaje (Re:Zero & Anime Gratis) */}
+              <div className="my-2 p-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/20 text-left">
+                <div className="flex items-center justify-between gap-1 mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#9E3304] dark:text-amber-300">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Voz de Personaje (1 Clic):</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold">
+                    Re:Zero & Anime Gratis
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => switchToCharacter('rem')}
+                    className={`px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer ${
+                      (config.voiceType || 'rem') === 'rem'
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-400 scale-[1.02]'
+                        : 'bg-white dark:bg-stone-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900 hover:bg-blue-50'
+                    }`}
+                  >
+                    <span>💙 Rem</span>
+                    <span className="text-[10px] opacity-80">(Maid)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchToCharacter('emilia')}
+                    className={`px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer ${
+                      config.voiceType === 'emilia'
+                        ? 'bg-purple-600 text-white ring-2 ring-purple-400 scale-[1.02]'
+                        : 'bg-white dark:bg-stone-800 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900 hover:bg-purple-50'
+                    }`}
+                  >
+                    <span>💜 Emilia</span>
+                    <span className="text-[10px] opacity-80">(Elfa)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchToCharacter('subaru')}
+                    className={`px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer ${
+                      config.voiceType === 'subaru'
+                        ? 'bg-amber-600 text-white ring-2 ring-amber-400 scale-[1.02]'
+                        : 'bg-white dark:bg-stone-800 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900 hover:bg-amber-50'
+                    }`}
+                  >
+                    <span>🧡 Subaru</span>
+                    <span className="text-[10px] opacity-80">(Shonen)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchToCharacter('michi')}
+                    className={`px-2.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer ${
+                      config.voiceType === 'energico'
+                        ? 'bg-[#9E3304] text-white ring-2 ring-amber-400 scale-[1.02]'
+                        : 'bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 hover:bg-stone-50'
+                    }`}
+                  >
+                    <span>🐱 Michi</span>
+                    <span className="text-[10px] opacity-80">(Bistro)</span>
                   </button>
                 </div>
               </div>
