@@ -1,29 +1,33 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ArrowRight,
   Check,
-  Edit3,
+  ChefHat,
+  Flame,
+  Heart,
   Keyboard,
   Mic,
   MicOff,
   Palette,
   Play,
+  RotateCcw,
   Save,
   ShoppingBag,
   Sparkles,
+  Sun,
+  Utensils,
   Volume2,
   VolumeX,
   X,
-  Utensils,
-  Sun,
-  Flame,
-  ArrowRight,
 } from 'lucide-react';
 import { MICHI_GESTURES } from '../data/mishikoSeed';
 import {
   Dish,
   DishModifier,
   FurColor,
+  KitchenOrder,
   MichiConfig,
+  MichiGender,
   MichiGesture,
   MichiOutfit,
 } from '../types/mishiko';
@@ -34,6 +38,7 @@ interface MichiHubScreenProps {
   tableNumber: string;
   config: MichiConfig;
   initialSubView?: 'voz' | 'apariencia' | 'gestos';
+  activeOrder?: KitchenOrder;
   onUpdateConfig: (next: MichiConfig) => void;
   onApplyGestureToMenu: (gesture: MichiGesture) => void;
   onAddParsedItemsToCart: (
@@ -45,6 +50,13 @@ interface ParsedMatch {
   dish: Dish;
   quantity: number;
   modifiers: DishModifier[];
+}
+
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'michi';
+  text: string;
+  time: string;
 }
 
 const FUR_OPTIONS: { color: FurColor; swatch: string; label: string }[] = [
@@ -66,6 +78,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   tableNumber,
   config,
   initialSubView = 'voz',
+  activeOrder,
   onUpdateConfig,
   onApplyGestureToMenu,
   onAddParsedItemsToCart,
@@ -73,6 +86,9 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   const [subView, setSubView] = useState<'voz' | 'apariencia' | 'gestos'>(
     initialSubView,
   );
+
+  // Género activo: prioriza config.gender o infiere por color blanco
+  const catGender: MichiGender = config.gender || (config.furColor === 'Blanco' ? 'hembra' : 'macho');
 
   // Voice & NLP state
   const [isListening, setIsListening] = useState(false);
@@ -84,8 +100,24 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   const [isJumping, setIsJumping] = useState(false);
   const [activeRec, setActiveRec] = useState<any>(null);
 
+  // Voces del sistema
+  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>('');
+
+  // Historial de conversación para que lo que hable el usuario SE QUEDE en pantalla
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'init-1',
+      sender: 'michi',
+      text: catGender === 'hembra'
+        ? `¡Hola! Soy ${config.name}, tu mesera virtual de MISHIKO 🐾. Estoy lista para atenderte en Mesa #${tableNumber}. Pregúntame qué comida está lista o qué se te antoja disfrutar hoy.`
+        : `¡Hola! Soy ${config.name}, tu mesero virtual de MISHIKO 🐱. Tócame para interactuar o habla por el micrófono para pedir o consultar el estado de tu comanda en Mesa #${tableNumber}.`,
+      time: 'Ahora',
+    },
+  ]);
+
   const [assistantReply, setAssistantReply] = useState<string>(
-    `¡Hola! Soy ${config.name}, tu mesero virtual de MISHIKO 🐱. Tócame para interactuar o presiona el micrófono para decirme qué se te antoja ordenar.`
+    chatMessages[0].text,
   );
 
   // Appearance local draft state
@@ -101,11 +133,23 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   );
   const [isPlayingGesture, setIsPlayingGesture] = useState(false);
 
+  // Cargar voces en español del navegador
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const updateVoices = () => {
+      const allVoices = window.speechSynthesis.getVoices();
+      const spanish = allVoices.filter((v) => v.lang.toLowerCase().startsWith('es'));
+      setSystemVoices(spanish.length > 0 ? spanish : allVoices);
+    };
+    updateVoices();
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+  }, []);
+
   useEffect(() => {
     setSubView(initialSubView);
   }, [initialSubView]);
 
-  // Cronómetro solo cuando el micrófono está realmente escuchando
+  // Cronómetro durante la captura de audio
   useEffect(() => {
     if (!isListening) {
       setSecondsListening(0);
@@ -118,7 +162,6 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   }, [isListening]);
 
   // Imagen del gato según género y pose (Talking Tom style con 7 expresiones)
-  const isWhiteCat = config.furColor === 'Blanco';
   const michiImages: Record<'macho' | 'hembra', Record<MichiPoseType, string>> = {
     macho: {
       saludo:      './assets/michi/michi-macho-saludo.png',
@@ -137,11 +180,10 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       curioso:     './assets/michi/michi-hembra-curioso.png',
       sorprendido: './assets/michi/michi-hembra-sorprendido.png',
       risa:        './assets/michi/michi-hembra-risa.png',
-    }
+    },
   };
 
-  const currentCatGender = isWhiteCat ? 'hembra' : 'macho';
-  const currentCatImage = michiImages[currentCatGender][michiPose] || michiImages[currentCatGender].saludo;
+  const currentCatImage = michiImages[catGender][michiPose] || michiImages[catGender].saludo;
 
   // Real client-side Spanish NLP parser matching dishes & modifiers from live menu
   const parsedMatches: ParsedMatch[] = useMemo(() => {
@@ -211,8 +253,8 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     return sum + (m.dish.price + delta) * m.quantity;
   }, 0);
 
-  // Síntesis de voz con soporte para género (tono dulce para gata)
-  const speakLine = (line: string, rate = 1.0) => {
+  // Síntesis de voz con soporte avanzado para género y diferentes estilos
+  const speakLine = (line: string, customRate?: number) => {
     if (!config.voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
     }
@@ -220,12 +262,119 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(line);
       utterance.lang = 'es-PE';
-      utterance.rate = rate;
-      utterance.pitch = isWhiteCat ? 1.3 : 1.05;
+      utterance.rate = customRate || config.voiceRate || 1.0;
+
+      // Asignar tono según estilo y género (macho vs hembra)
+      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'dulce' : 'energico');
+      if (voiceStyle === 'tom') {
+        utterance.pitch = 1.35; // Estilo Talking Tom divertido
+        utterance.rate = 1.08;
+      } else if (voiceStyle === 'dulce' || catGender === 'hembra') {
+        utterance.pitch = config.voicePitch || 1.25; // Michita: dulce, femenino y alegre
+      } else if (voiceStyle === 'energico' || catGender === 'macho') {
+        utterance.pitch = config.voicePitch || 1.05; // Michi: varonil, claro y entusiasta
+      } else {
+        utterance.pitch = 1.0;
+      }
+
+      // Si el usuario seleccionó una voz específica
+      if (selectedVoiceName && systemVoices.length > 0) {
+        const found = systemVoices.find((v) => v.name === selectedVoiceName);
+        if (found) utterance.voice = found;
+      } else if (systemVoices.length > 0) {
+        // Asignación inteligente de voz española según género
+        if (catGender === 'hembra') {
+          const female = systemVoices.find((v) =>
+            /sabina|helena|laura|paulina|monica|female|mujer|maria|zira/i.test(v.name),
+          ) || systemVoices.find((v) => v.lang.startsWith('es'));
+          if (female) utterance.voice = female;
+        } else {
+          const male = systemVoices.find((v) =>
+            /raul|pablo|jorge|male|hombre|diego|carlos/i.test(v.name),
+          ) || systemVoices.find((v) => v.lang.startsWith('es'));
+          if (male) utterance.voice = male;
+        }
+      }
+
       window.speechSynthesis.speak(utterance);
     } catch {
       // Ignorar errores en navegadores restrictivos
     }
+  };
+
+  // Verificación detallada de comida lista según la comanda real
+  const handleFoodStatusQuery = () => {
+    if (!activeOrder || !activeOrder.items || activeOrder.items.length === 0) {
+      const resp = catGender === 'hembra'
+        ? `¡Miau! Querido comensal, en tu Mesa #${tableNumber} aún no tienes una comanda activa enviada a cocina. ¡Pídeme lo que se te antoje de la carta y te lo anoto al instante! 🐾`
+        : `¡Miau! En Mesa #${tableNumber} todavía no registras comanda activa. ¡Dime qué platillo o bebida te gustaría ordenar y lo enviamos de inmediato! 🍽️`;
+      setAssistantReply(resp);
+      setMichiPose('curioso');
+      speakLine(resp);
+      addChatMessage('michi', resp);
+      return;
+    }
+
+    const itemsCompletados = activeOrder.items.filter((i) => i.completed);
+    const itemsPendientes = activeOrder.items.filter((i) => !i.completed);
+    const totalItems = activeOrder.items.length;
+
+    // Caso 1: Todos los platillos listos (o step 4)
+    if (activeOrder.step === 4 || (itemsCompletados.length === totalItems && totalItems > 0)) {
+      const lista = activeOrder.items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
+      const resp = catGender === 'hembra'
+        ? `¡Buenas noticias! 🎉 Toda tu comanda de Mesa #${tableNumber} ya está lista: ${lista}. En estos momentos el mozo te la está llevando a tu mesa. ¡Que lo disfrutes mucho! 💖`
+        : `¡Tu comida ya está lista! 👨‍🍳 De tu comanda #${activeOrder.shortCode} para Mesa #${tableNumber}, salieron de cocina: ${lista}. Ya están emplatados y van en camino a tu mesa. ¡Buen provecho! 🥢`;
+      setAssistantReply(resp);
+      setMichiPose('listo');
+      speakLine(resp);
+      addChatMessage('michi', resp);
+      return;
+    }
+
+    // Caso 2: Ya fue entregado (step 5)
+    if (activeOrder.step === 5) {
+      const resp = catGender === 'hembra'
+        ? `¡Miau! Tu comanda #${activeOrder.shortCode} ya fue entregada en tu mesa. ¿Estuvo todo delicioso o deseas pedir algún postre como la Trilogía de Mochis o un trago de autor? 🍰`
+        : `Tu pedido #${activeOrder.shortCode} ya fue entregado en tu mesa. Si gustas pedir algo más de la carta o solicitar la cuenta, solo avísame y te ayudo. 😺`;
+      setAssistantReply(resp);
+      setMichiPose('satisfecho');
+      speakLine(resp);
+      addChatMessage('michi', resp);
+      return;
+    }
+
+    // Caso 3: Algunos platos ya salieron y otros siguen en fuego
+    if (itemsCompletados.length > 0 && itemsPendientes.length > 0) {
+      const listosTxt = itemsCompletados.map((i) => `${i.quantity}x ${i.name}`).join(', ');
+      const pendientesTxt = itemsPendientes.map((i) => `${i.quantity}x ${i.name}`).join(', ');
+      const resp = catGender === 'hembra'
+        ? `¡Aquí tienes el estado de tu comida! 🍲 Ya salieron listos: ${listosTxt}. Y en el fuego siguen preparándose con esmero: ${pendientesTxt}. ¡Falta muy poquito para servir todo! ✨`
+        : `Auditoría Cocina KDS: Ya están listos en el pase: ${listosTxt}. Siguen en cocción a fuego vivo: ${pendientesTxt}. Te aviso apenas el chef dé la señal 👨‍🍳🔥`;
+      setAssistantReply(resp);
+      setMichiPose('anotado');
+      speakLine(resp);
+      addChatMessage('michi', resp);
+      return;
+    }
+
+    // Caso 4: Todos en preparación (step 3)
+    const nombresPendientes = activeOrder.items.map((i) => `${i.quantity}x ${i.name}`).join(', ');
+    const resp = catGender === 'hembra'
+      ? `¡Miau! Tu comanda #${activeOrder.shortCode} (${nombresPendientes}) está en preparación en cocina. Los cortes y la sazón tradicional están en pleno proceso para Mesa #${tableNumber}. ¡Pronto estará en tu mesa bien calientita! 🐾🔥`
+      : `Tu comanda #${activeOrder.shortCode} (${nombresPendientes}) está marchando en cocina en el fuego tradicional. El tiempo estimado de salida es de 10 a 15 minutos ⏱️🔥`;
+    setAssistantReply(resp);
+    setMichiPose('curioso');
+    speakLine(resp);
+    addChatMessage('michi', resp);
+  };
+
+  const addChatMessage = (sender: 'user' | 'michi', text: string) => {
+    const timeStr = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    setChatMessages((prev) => [
+      ...prev,
+      { id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, sender, text, time: timeStr },
+    ]);
   };
 
   // Motor NLU con Guardrails: solo temas gastronómicos y de la web MISHIKO
@@ -233,81 +382,96 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     const text = rawText.toLowerCase().trim();
     if (!text) return;
 
+    // Agregar lo que dijo el usuario al feed para que SE QUEDE visible
+    addChatMessage('user', rawText);
+
     // 1. Guardrail: temas fuera del restaurante (fútbol, política, noticias, etc.)
     const fueraDeDominio = /(futbol|fútbol|partido|gol|alianza|cristal|messi|ronaldo|politica|política|presidente|elecciones|noticia|noticias|guerra|clase|tarea|examen|apuesta)/i;
     if (fueraDeDominio.test(text)) {
-      const resp = `¡Miau! Solo soy tu mesero virtual de MISHIKO 🐱. No sé de fútbol ni noticias externas, pero con mucho gusto te recomiendo los mejores platillos, bebidas según el clima o te llevo el pedido a cocina. ¿Qué se te antoja ordenar?`;
+      const resp = catGender === 'hembra'
+        ? `¡Miau! Solo soy tu mesera virtual de MISHIKO 🐾. No sé de fútbol ni noticias externas, pero con mucho gusto te recomiendo los mejores platillos, bebidas según el clima o te llevo el pedido a cocina. ¿Qué se te antoja ordenar?`
+        : `¡Miau! Solo soy tu mesero virtual de MISHIKO 🐱. No sé de fútbol ni noticias externas, pero con mucho gusto te recomiendo los mejores platillos, bebidas según el clima o te llevo el pedido a cocina. ¿Qué se te antoja ordenar?`;
       setAssistantReply(resp);
       setMichiPose('saludo');
       speakLine(resp);
+      addChatMessage('michi', resp);
       return;
     }
 
-    // 2. Recomendación de bebidas según el clima
+    // 2. Estado de la comida / ¿Qué comida está lista? / ¿Ya está mi comida?
+    if (/(estado|comida|ya salio|ya salieron|salio|salieron|listo|lista|listos|listas|cuanto falta|demora|cocina|ya esta|ya estaban|como va)/i.test(text)) {
+      handleFoodStatusQuery();
+      return;
+    }
+
+    // 3. Recomendación de bebidas según el clima
     if (/(clima|calor|frío|frio|sed|bebida|bebidas|refresco|tomar|coctel|cóctel|trago)/i.test(text)) {
-      const resp = `¡Para el calor te recomiendo nuestra Limonada de Hierbabuena Frozen bien fría o el Pisco Dragon Sour de autor! Si es de noche o hace frío, el Té Verde Jazmín o un Ramen Criollo caliente te sentarán genial ☀️🍹`;
+      const resp = catGender === 'hembra'
+        ? `¡Para el calor te recomiendo nuestra Limonada de Hierbabuena Frozen bien fría o el Pisco Dragon Sour de autor! Si es de noche o hace frío, el Té Verde Jazmín o un Ramen Criollo caliente te sentarán genial ☀️🍹`
+        : `¡Para el calor te recomiendo nuestra Limonada de Hierbabuena Frozen bien fría o el Pisco Dragon Sour de autor! Si es de noche o hace frío, el Té Verde Jazmín o un Ramen Criollo caliente te sentarán genial ☀️🍹`;
       setAssistantReply(resp);
       setMichiPose('saludo');
       speakLine(resp);
+      addChatMessage('michi', resp);
       return;
     }
 
-    // 3. Recomendaciones generales / sommelier
+    // 4. Recomendaciones generales / sommelier
     if (/(recomiend|sugi|especial|popular|favorito|bueno|rico|carta|chef)/i.test(text)) {
-      const resp = `¡Nuestra gran recomendación es la Michi Smash Burger Doble y el Ramen Criollo Fusión! De entrada unas Gyozas de Cerdo al vapor con salsa ponzu. ¡Son lo más pedido de la casa! 🍽️`;
+      const resp = `¡Nuestra gran recomendación es la Michi Smash Burger Doble y el Ramen Tonkotsu Black Garlic! De entrada unas Gyozas de Cerdo al vapor con salsa ponzu. ¡Son lo más pedido de la casa! 🍽️`;
       setAssistantReply(resp);
       setMichiPose('saludo');
       speakLine(resp);
+      addChatMessage('michi', resp);
       return;
     }
 
-    // 4. Tomar y llevar el pedido
+    // 5. Tomar y llevar el pedido
     if (/(quiero|dame|agrega|pon|traeme|trae|comprar|ordenar|pido|lleva|comanda)/i.test(text)) {
       if (parsedMatches.length > 0) {
         onAddParsedItemsToCart(parsedMatches);
-        const nombres = parsedMatches.map(m => `${m.quantity}x ${m.dish.name}`).join(', ');
-        const resp = `¡Anotado! He llevado ${nombres} a tu comanda para Mesa #${tableNumber} 👍 ¿Deseas pedir algo más?`;
+        const nombres = parsedMatches.map((m) => `${m.quantity}x ${m.dish.name}`).join(', ');
+        const resp = catGender === 'hembra'
+          ? `¡Anotado con cariño! He llevado ${nombres} a tu comanda para Mesa #${tableNumber} 💖 ¿Deseas pedir algo más?`
+          : `¡Anotado! He llevado ${nombres} a tu comanda para Mesa #${tableNumber} 👍 ¿Deseas pedir algo más?`;
         setAssistantReply(resp);
         setMichiPose('anotado');
         speakLine(resp);
+        addChatMessage('michi', resp);
         return;
       }
     }
 
-    // 5. Estado de la comida
-    if (/(estado|comida|ya salio|listo|cuanto falta|demora|cocina)/i.test(text)) {
-      const resp = `¡Tu pedido está en cocina preparándose a fuego vivo! En breve te lo llevo a tu mesa bien caliente 🍽️`;
-      setAssistantReply(resp);
-      setMichiPose('listo');
-      speakLine(resp);
-      return;
-    }
-
     // 6. Saludo
-    if (/(hola|buenos dias|buenas tardes|buenas noches|michi|michita|que tal)/i.test(text)) {
-      const resp = `¡Hola! Bienvenido a MISHIKO. Soy ${config.name}, tu mesero virtual. ¿Qué delicia se te antoja disfrutar hoy? 🐱`;
+    if (/(hola|buenos dias|buenas tardes|buenas noches|michi|michita|que tal|saluda)/i.test(text)) {
+      const resp = catGender === 'hembra'
+        ? `¡Hola, qué alegría verte! Bienvenido a MISHIKO. Soy ${config.name}, tu mesera virtual. ¿Qué delicia se te antoja disfrutar hoy? 🐾`
+        : `¡Hola! Bienvenido a MISHIKO. Soy ${config.name}, tu mesero virtual. ¿Qué delicia se te antoja disfrutar hoy? 🐱`;
       setAssistantReply(resp);
       setMichiPose('saludo');
       speakLine(resp);
+      addChatMessage('michi', resp);
       return;
     }
 
     // Default con platillos detectados o sugerencia
     if (parsedMatches.length > 0) {
-      const nombres = parsedMatches.map(m => `${m.quantity}x ${m.dish.name}`).join(', ');
+      const nombres = parsedMatches.map((m) => `${m.quantity}x ${m.dish.name}`).join(', ');
       const resp = `Detecté en tu voz: ${nombres}. Puedes pulsar "Llevar a mi pedido" para enviarlo directamente a la comanda 😺`;
       setAssistantReply(resp);
       setMichiPose('anotado');
       speakLine(resp);
+      addChatMessage('michi', resp);
     } else {
-      const resp = `Entendido. Puedes pedirme cualquier platillo del menú, bebidas según el clima o decirme "recomiéndame algo" 😺`;
+      const resp = `Entendido. Puedes pedirme cualquier platillo del menú, bebidas según el clima, consultar "¿qué comida está lista?" o decirme "recomiéndame algo" 😺`;
       setAssistantReply(resp);
       setMichiPose('saludo');
       speakLine(resp);
+      addChatMessage('michi', resp);
     }
   };
 
-  // Control real del micrófono
+  // Control del micrófono continuo (Permite hablar seguido sin que se corte)
   const startListening = () => {
     const SpeechRec =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -324,29 +488,39 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
 
       const rec = new SpeechRec();
       rec.lang = 'es-PE';
-      rec.continuous = false;
+      rec.continuous = true; // Micrófono continuo para hablar con tranquilidad
       rec.interimResults = true;
 
       rec.onstart = () => {
         setIsListening(true);
         setSecondsListening(0);
-        setTranscript('');
       };
 
+      let timer: any = null;
+
       rec.onresult = (event: any) => {
-        const text = Array.from(event.results)
-          .map((r: any) => r[0].transcript)
-          .join('');
+        let currentTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          currentTranscript += event.results[i][0].transcript;
+        }
+
+        const text = currentTranscript.trim();
         if (text) {
           setTranscript(text);
-          if (event.results[0].isFinal) {
-            processUserInput(text);
-          }
+
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            if (text.length > 3) {
+              processUserInput(text);
+            }
+          }, 1500);
         }
       };
 
-      rec.onerror = () => {
-        setIsListening(false);
+      rec.onerror = (e: any) => {
+        if (e.error !== 'no-speech') {
+          setIsListening(false);
+        }
       };
 
       rec.onend = () => {
@@ -377,30 +551,55 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     setIsJumping(true);
     setTimeout(() => setIsJumping(false), 600);
 
-    const interacciones: { pose: MichiPoseType; texto: string }[] = [
+    const interacciones: { pose: MichiPoseType; texto: string }[] = catGender === 'hembra' ? [
       {
-        pose: 'risa',
-        texto: `¡Jajaja miau! ¡Eso me hace cosquillas en las orejitas y los bigotes! 😹 ¿Listo para ordenar algo rico en Mesa #${tableNumber}?`,
+        pose: 'saludo',
+        texto: `¡Miau! Hola comensal 🐾. Soy Michita, tu mesera virtual en Mesa #${tableNumber}. ¡Es un gusto atenderte hoy!`,
       },
       {
-        pose: 'satisfecho',
-        texto: `¡Ufff, qué delicia de carta! Me sobo la pancita solo de pensar en el Wagyu y el Ramen Tonkotsu 😋. ¿Te provoco uno?`,
+        pose: 'risa',
+        texto: `¡Ronroneo de felicidad! Me encantan las visitas alegres en MISHIKO 💖. ¿Te traigo algo refrescante para brindar?`,
       },
       {
         pose: 'curioso',
-        texto: `¿Qué plato se te antoja hoy? Soy todo oídos 🐾. Dime "bebidas según el clima" o pregúntame por las especialidades.`,
+        texto: `¿Qué plato se te antoja hoy? Soy todo oídos 🐾. Dime "¿qué comida está lista?" o pregúntame por las especialidades.`,
       },
       {
         pose: 'sorprendido',
-        texto: `¡Waaah! ¡La cocina está a máxima marcha sacando pedidos en tiempo récord! 🔥`,
-      },
-      {
-        pose: 'saludo',
-        texto: `¡Miau! Aquí estoy atento a tu servicio. Toca el micrófono rojo o dime tu comanda cuando gustes 🐱`,
+        texto: `¡Vaya elección! Todo lo que prepares con nuestros chefs Nikkei queda delicioso. ¡Pídeme lo que gustes! ✨`,
       },
       {
         pose: 'listo',
-        texto: `¡Tin tin! Servicio listo para llevar los mejores sabores directo a tu mesa 🍽️`,
+        texto: `¡Miau! Estoy atenta a cocina y a tu mesa para que todo salga perfecto. ¡Buen provecho! 🍣`,
+      },
+      {
+        pose: 'satisfecho',
+        texto: `¡Mmm, qué rico huele la cocina hoy! El Tonkotsu y los Mochis están espectaculares. ¿Te animas a probarlos? 🍰`,
+      },
+    ] : [
+      {
+        pose: 'saludo',
+        texto: `¡Miau! Hola comensal 🐱. Soy Michi, tu mesero virtual en Mesa #${tableNumber}. ¡Es un gusto atenderte hoy!`,
+      },
+      {
+        pose: 'risa',
+        texto: `¡Miau miau miau! Me encantan los comensales con buen apetito 😺. ¿Qué vamos a degustar hoy?`,
+      },
+      {
+        pose: 'curioso',
+        texto: `¿Qué plato se te antoja hoy? Soy todo oídos 🐾. Dime "bebidas según el clima" o pregúntame "¿qué comida está lista?".`,
+      },
+      {
+        pose: 'sorprendido',
+        texto: `¡Ufff, excelente gusto! Nuestra carne Wagyu y el Ramen criollo son de los mejores de Lima. ¡Pídeme lo que desees! 🍜`,
+      },
+      {
+        pose: 'listo',
+        texto: `¡Listo para servirte! En un instante llevo tu comanda directo a la pantalla de cocina KDS. ¡Tú solo disfruta! 👨‍🍳`,
+      },
+      {
+        pose: 'satisfecho',
+        texto: `¡Miau, qué delicia de mesa! Recuerda que puedes pedirme la cuenta o más bebidas cuando gustes. ¡A comer rico! 🥢`,
       },
     ];
 
@@ -408,25 +607,26 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     setAssistantReply(elegida.texto);
     setMichiPose(elegida.pose);
     speakLine(elegida.texto);
+    addChatMessage('michi', elegida.texto);
   };
 
   const handleSaveAppearance = () => {
     onUpdateConfig(draftConfig);
     setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 3000);
+    setTimeout(() => setSavedToast(false), 2400);
   };
 
   const handlePlayGesture = (gesture: MichiGesture) => {
     setSelectedGesture(gesture);
     setIsPlayingGesture(true);
 
-    // Mapeo dinámico de gesto a pose visual
     let nextPose: MichiPoseType = 'saludo';
-    if (gesture.id === 'satisfecho' || gesture.id === 'celebracion') nextPose = 'satisfecho';
-    else if (gesture.id === 'curioso' || gesture.id === 'pensando' || gesture.id === 'sommelier') nextPose = 'curioso';
-    else if (gesture.id === 'sorprendido') nextPose = 'sorprendido';
-    else if (gesture.id === 'risa') nextPose = 'risa';
-    else if (gesture.id === 'escuchando' || gesture.id === 'confirmado') nextPose = 'anotado';
+    if (gesture.id === 'bienvenida' || gesture.id === 'reverencia') nextPose = 'saludo';
+    else if (gesture.id === 'anotando' || gesture.id === 'apuntes') nextPose = 'anotado';
+    else if (gesture.id === 'guiño' || gesture.id === 'curiosidad') nextPose = 'curioso';
+    else if (gesture.id === 'ronroneo' || gesture.id === 'baile' || gesture.id === 'aplauso') nextPose = 'risa';
+    else if (gesture.id === 'sorpresa' || gesture.id === 'estiramiento') nextPose = 'sorprendido';
+    else if (gesture.id === 'plato_listo' || gesture.id === 'servir') nextPose = 'satisfecho';
     else if (gesture.id === 'cocina' || gesture.id === 'lista') nextPose = 'listo';
     setMichiPose(nextPose);
 
@@ -436,25 +636,33 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     setTimeout(() => setIsPlayingGesture(false), 1200 / config.gestureSpeed);
   };
 
-  const filteredGestures = useMemo(() => {
-    if (gestureCategory === 'Todas') return MICHI_GESTURES;
-    return MICHI_GESTURES.filter((g) => g.category === gestureCategory);
-  }, [gestureCategory]);
+  const handleTestVoice = () => {
+    const testLine = catGender === 'hembra'
+      ? `¡Miau! Hola querido comensal, soy Michita. Esta es mi voz virtual en español. ¡Estoy lista para atenderte con mucho cariño!`
+      : `¡Miau! Hola comensal, soy Michi tu mesero virtual. Esta es mi voz de atención en vivo. ¿Qué vamos a pedir hoy?`;
+    setAssistantReply(testLine);
+    speakLine(testLine);
+    addChatMessage('michi', testLine);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-28 lg:pb-10 space-y-6">
-      {/* Sub-navegación entre vistas de Michi */}
+      {/* Top Header & Sub-Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="text-xs font-medium text-stone-500 dark:text-stone-400">
-            Mesero Virtual Inteligente · Mesa #{tableNumber}
+          <div className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+            Asistente Virtual · Mesa #{tableNumber}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-50 mt-0.5">
-            {config.name} AI Hub
+          <h1 className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50 flex items-center gap-2">
+            <span>Michi AI Hub</span>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-[#9E3304] dark:bg-amber-950/60 dark:text-amber-300">
+              {catGender === 'hembra' ? '🎀 Michita Hembra' : '🐱 Michi Macho'}
+            </span>
           </h1>
         </div>
 
-        <div className="inline-flex items-center gap-1 p-1 rounded-2xl bg-stone-200/70 dark:bg-stone-800/80">
+        {/* Sub-view Navigation Pill */}
+        <div className="inline-flex p-1 rounded-2xl bg-stone-100 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700">
           <button
             type="button"
             onClick={() => setSubView('voz')}
@@ -477,7 +685,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
             }`}
           >
             <Palette className="w-4 h-4" />
-            <span>Apariencia</span>
+            <span>Apariencia & Voz</span>
           </button>
           <button
             type="button"
@@ -499,26 +707,37 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Columna Izquierda: Escenario Interactivo de Michi */}
           <div className="lg:col-span-6 space-y-5">
-            {/* Personaje Interactivo Central (Talking Tom Style) */}
+            {/* Personaje Interactivo Central */}
             <div className="rounded-3xl bg-gradient-to-b from-amber-500/10 via-white to-stone-50 dark:from-amber-950/20 dark:via-[#191614] dark:to-[#12100E] border border-amber-500/20 dark:border-stone-800 p-6 text-center relative overflow-hidden shadow-sm">
-              {/* Header con botón de voz ON/OFF */}
+              {/* Header con botón de voz ON/OFF y probar voz */}
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-xs font-bold text-[#9E3304] dark:text-amber-300">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span>En Servicio · Mesa #{tableNumber}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onUpdateConfig({ ...config, voiceEnabled: !config.voiceEnabled })}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
-                    config.voiceEnabled
-                      ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-[#9E3304] dark:text-amber-300'
-                      : 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-500'
-                  }`}
-                >
-                  {config.voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                  <span>Voz {config.voiceEnabled ? 'ON' : 'OFF'}</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleTestVoice}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-xs font-bold text-[#9E3304] dark:text-amber-300 hover:bg-amber-100"
+                    title="Escuchar la voz actual del Michi"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Probar Voz</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateConfig({ ...config, voiceEnabled: !config.voiceEnabled })}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                      config.voiceEnabled
+                        ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-[#9E3304] dark:text-amber-300'
+                        : 'bg-stone-100 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-500'
+                    }`}
+                  >
+                    {config.voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                    <span>Voz {config.voiceEnabled ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Burbuja de diálogo grande de Michi */}
@@ -543,9 +762,8 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                   <div className="absolute inset-0 rounded-full bg-gradient-to-t from-amber-400/20 to-transparent blur-xl pointer-events-none" />
                   <img
                     src={currentCatImage}
-                    alt={config.name}
-                    className="w-full h-full object-contain filter drop-shadow-xl select-none"
-                    draggable={false}
+                    alt={`${config.name} interactivo`}
+                    className="w-full h-full object-contain filter drop-shadow-2xl"
                   />
                 </div>
                 <div className="text-xs font-semibold text-stone-400 dark:text-stone-500 mt-1">
@@ -553,7 +771,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                 </div>
               </div>
 
-              {/* Botón Principal de Micrófono para Hablar */}
+              {/* Botón Principal de Micrófono para Hablar Continuo */}
               <div className="pt-2 max-w-sm mx-auto space-y-3">
                 <button
                   type="button"
@@ -567,19 +785,19 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                   {isListening ? (
                     <>
                       <MicOff className="w-5 h-5 animate-spin" />
-                      <span>🔴 Escuchando tu voz... (Toca para enviar)</span>
+                      <span>🔴 Escuchando en vivo... (Toca para pausar)</span>
                     </>
                   ) : (
                     <>
                       <Mic className="w-5 h-5" />
-                      <span>🎤 Toca para hablar con {config.name}</span>
+                      <span>🎙️ Hablar con {config.name}</span>
                     </>
                   )}
                 </button>
 
                 {isListening && (
                   <div className="text-xs font-mono font-bold text-red-600 dark:text-red-400">
-                    Capturando audio en vivo · 00:{String(secondsListening).padStart(2, '0')} seg
+                    Micrófono Continuo Activo · 00:{String(secondsListening).padStart(2, '0')} seg
                   </div>
                 )}
               </div>
@@ -588,16 +806,34 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
             {/* Sugerencias Rápidas de Conversación */}
             <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 space-y-3">
               <div className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
-                Preguntas y Acciones Rápidas
+                Preguntas Rápidas y Auditoría de Comida
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => processUserInput('bebidas según el clima')}
+                  onClick={() => processUserInput('¿Qué comida está lista?')}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 flex items-center gap-1.5"
+                >
+                  <ChefHat className="w-3.5 h-3.5" />
+                  <span>¿Qué comida está lista?</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => processUserInput('¿Cómo va mi comida?')}
                   className="px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-xs font-semibold text-[#9E3304] dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100"
                 >
-                  ☀️ Bebidas según el clima
+                  ⏱️ ¿Cómo va mi pedido?
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => processUserInput('bebidas según el clima')}
+                  className="px-3.5 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-200 flex items-center gap-1.5"
+                >
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Bebidas según el clima</span>
                 </button>
 
                 <button
@@ -605,15 +841,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                   onClick={() => processUserInput('recomiéndame algo')}
                   className="px-3.5 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-200"
                 >
-                  ⭐ ¿Qué me recomiendas?
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => processUserInput('cuál es el estado de mi pedido')}
-                  className="px-3.5 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-200"
-                >
-                  📍 ¿Cómo va mi comida?
+                  ⭐ Especialidades
                 </button>
 
                 <button
@@ -622,141 +850,158 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                   className="px-3 py-1.5 rounded-lg border border-dashed border-stone-300 dark:border-stone-700 text-xs font-medium text-stone-400 hover:text-stone-600"
                   title="Prueba el filtro de dominio de Michi"
                 >
-                  ⚽ ¿Quién ganó el partido? (Prueba filtro)
+                  ⚽ ¿Quién ganó el partido? (Filtro)
                 </button>
               </div>
 
               {/* Botón de texto alternativo */}
               <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-xs">
-                <span className="text-stone-500">¿Prefieres escribir en vez de hablar?</span>
+                <span className="text-stone-400">¿Prefieres escribir?</span>
                 <button
                   type="button"
-                  onClick={() => setShowKeyboardInput((v) => !v)}
-                  className="text-[#9E3304] dark:text-amber-400 font-semibold hover:underline"
+                  onClick={() => setShowKeyboardInput(!showKeyboardInput)}
+                  className="inline-flex items-center gap-1 font-semibold text-[#9E3304] dark:text-amber-400 hover:underline"
                 >
-                  {showKeyboardInput ? 'Cerrar teclado' : 'Escribir con teclado'}
+                  <Keyboard className="w-3.5 h-3.5" />
+                  <span>{showKeyboardInput ? 'Ocultar teclado' : 'Escribir con teclado'}</span>
                 </button>
               </div>
 
               {showKeyboardInput && (
-                <div className="pt-2 flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <input
                     type="text"
-                    value={transcript}
-                    onChange={(e) => setTranscript(e.target.value)}
+                    placeholder="Escribe: ¿Qué comida está lista?, quiero 2 hamburguesas..."
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') processUserInput(transcript);
+                      if (e.key === 'Enter') {
+                        processUserInput(e.currentTarget.value);
+                        e.currentTarget.value = '';
+                      }
                     }}
-                    placeholder="Escribe: dos hamburguesas y una limonada..."
-                    className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-xs text-stone-900 dark:text-stone-100 focus:outline-none"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-[#9E3304]"
                   />
-                  <button
-                    type="button"
-                    onClick={() => processUserInput(transcript)}
-                    className="px-4 py-2.5 rounded-xl bg-[#9E3304] text-white text-xs font-semibold"
-                  >
-                    Enviar
-                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Columna Derecha: Interpretación del Pedido y Carrito */}
+          {/* Columna Derecha: Feed de Conversación Persistente y Reconocimiento de Comanda */}
           <div className="lg:col-span-6 space-y-5">
-            {/* Tarjeta de Comanda Detectada */}
+            {/* Historial de conversación (Para que lo que hables SE QUEDE) */}
+            <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Registro de Voz & Respuestas</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChatMessages([])}
+                  className="text-[11px] text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Limpiar</span>
+                </button>
+              </div>
+
+              <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                {chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                  >
+                    <div className="text-[10px] font-bold text-stone-400 px-1 mb-0.5">
+                      {msg.sender === 'user' ? 'Tú (Voz / Comensal)' : config.name} · {msg.time}
+                    </div>
+                    <div
+                      className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-xs leading-relaxed ${
+                        msg.sender === 'user'
+                          ? 'bg-[#9E3304] text-white rounded-br-none'
+                          : 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 rounded-bl-none border border-stone-200 dark:border-stone-700'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bandeja de Comanda Detectada en Voz */}
             <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-bold text-stone-900 dark:text-stone-50">
-                    Comanda Reconocida por {config.name}
-                  </h2>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
-                    Mesa #{tableNumber} · Carta sincronizada en vivo
-                  </p>
+                <div className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <ShoppingBag className="w-4 h-4 text-[#9E3304] dark:text-amber-400" />
+                  <span>Platillos Detectados en tu Voz</span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-[#9E3304] dark:text-amber-300 tabular-nums">
-                  {parsedMatches.length} detectados
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                  {parsedMatches.length} ítems
                 </span>
               </div>
 
-              {/* Si hay texto reconocido */}
-              {transcript && (
-                <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800 text-xs text-stone-700 dark:text-stone-300">
-                  <span className="font-semibold text-stone-500">Lo que escuché:</span> “{transcript}”
-                </div>
-              )}
-
-              {/* Lista de platillos parseados */}
               {parsedMatches.length === 0 ? (
-                <div className="py-12 text-center rounded-xl border-2 border-dashed border-stone-200 dark:border-stone-800 p-6 space-y-2">
+                <div className="p-8 text-center rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-dashed border-stone-200 dark:border-stone-800 space-y-2">
                   <Utensils className="w-8 h-8 text-stone-300 dark:text-stone-600 mx-auto" />
-                  <p className="text-sm font-semibold text-stone-600 dark:text-stone-300">
-                    Tu bandeja de voz está vacía
-                  </p>
-                  <p className="text-xs text-stone-400 max-w-xs mx-auto">
-                    Presiona el micrófono y pide algo como: <br />
-                    <span className="text-[#9E3304] dark:text-amber-400 font-medium">“Michi, quiero dos ramen y una limonada bien fría”</span>
-                  </p>
+                  <div className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+                    Aún no hay platillos reconocidos
+                  </div>
+                  <div className="text-[11px] text-stone-400 max-w-xs mx-auto">
+                    Di por ejemplo: <em>"Quiero dos hamburguesas dobles sin cebolla y una limonada frozen"</em>.
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <ul className="divide-y divide-stone-100 dark:divide-stone-800">
-                    {parsedMatches.map((m, idx) => {
-                      const modCost = m.modifiers.reduce((s, mod) => s + mod.priceDelta, 0);
-                      const unit = m.dish.price + modCost;
-                      return (
-                        <li key={idx} className="py-3 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <img
-                              src={m.dish.image}
-                              alt={m.dish.name}
-                              className="w-12 h-12 rounded-xl object-cover shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
-                                {m.quantity}× {m.dish.name}
-                              </div>
-                              {m.modifiers.length > 0 && (
-                                <div className="text-[11px] text-stone-500 truncate">
-                                  {m.modifiers.map((mod) => mod.label).join(' · ')}
-                                </div>
-                              )}
-                              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                                {m.dish.station}
-                              </div>
-                            </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {parsedMatches.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40"
+                      >
+                        <DishImage
+                          src={item.dish.imageUrl}
+                          alt={item.dish.name}
+                          className="w-12 h-12 rounded-lg object-cover shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                            {item.quantity}x {item.dish.name}
                           </div>
+                          <div className="text-[11px] text-stone-500">
+                            {item.modifiers.length > 0
+                              ? item.modifiers.map((m) => m.label).join(', ')
+                              : 'Porción clásica'}
+                          </div>
+                        </div>
+                        <div className="text-xs font-bold text-[#9E3304] dark:text-amber-400 shrink-0">
+                          S/ {((item.dish.price + item.modifiers.reduce((s, m) => s + m.priceDelta, 0)) * item.quantity).toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-                          <span className="text-xs font-bold tabular-nums text-stone-900 dark:text-stone-100 shrink-0">
-                            S/ {(unit * m.quantity).toFixed(2)}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-
-                  <div className="pt-3 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between text-sm">
-                    <span className="font-medium text-stone-500">Subtotal detectado:</span>
-                    <span className="text-base font-extrabold text-[#9E3304] dark:text-amber-400 tabular-nums">
+                  <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-xs font-bold">
+                    <span>Total estimado:</span>
+                    <span className="text-[#9E3304] dark:text-amber-400 text-sm">
                       S/ {parsedTotal.toFixed(2)}
                     </span>
                   </div>
 
-                  {/* Botón de acción: Enviar al Carrito */}
                   <button
                     type="button"
                     onClick={() => {
                       onAddParsedItemsToCart(parsedMatches);
-                      const msg = `¡Anotado! He llevado ${parsedMatches.length} platillos a tu comanda para Mesa #${tableNumber} 🍽️`;
+                      const msg = catGender === 'hembra'
+                        ? `¡Anotado! He llevado ${parsedMatches.length} platillos a tu comanda de Mesa #${tableNumber} 💖`
+                        : `¡Anotado! He llevado ${parsedMatches.length} platillos a tu comanda de Mesa #${tableNumber} 🍽️`;
                       setAssistantReply(msg);
                       setMichiPose('anotado');
                       speakLine(msg);
+                      addChatMessage('michi', msg);
                       setTranscript('');
                     }}
                     className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-[#9E3304] hover:bg-[#822802] text-white text-xs font-bold shadow-md transition-colors min-h-[46px]"
                   >
-                    <span>Llevar estos platillos a mi Pedido</span>
+                    <span>Llevar a mi pedido</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -766,144 +1011,266 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
         </div>
       )}
 
-      {/* VISTA 2: APARIENCIA */}
-      {subView === 'apariencia' && (() => {
-        const draftColorKey = (draftConfig.furColor || 'Naranja').toLowerCase();
-        const draftOutfitKey = (draftConfig.outfit || 'Corbatín')
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-        const draftSpriteImg = `./assets/michi/michi-${draftColorKey}-${draftOutfitKey}.png`;
-
-        return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-8 flex flex-col items-center text-center space-y-4">
-            <div className="w-52 h-52 mx-auto flex items-center justify-center p-2 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 shadow-inner">
-              <img
-                src={draftSpriteImg}
-                alt={draftConfig.name}
-                className="w-full h-full object-contain filter drop-shadow-md transition-transform hover:scale-105"
-              />
-            </div>
+      {/* VISTA 2: APARIENCIA & CONFIGURACIÓN DE VOZ */}
+      {subView === 'apariencia' && (
+        <div className="max-w-4xl space-y-6">
+          <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 space-y-6">
             <div>
-              <h2 className="text-xl font-bold text-stone-900 dark:text-stone-50">
-                {draftConfig.name}
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                Personalización de Michi & Voz
               </h2>
-              <p className="text-xs text-stone-500 mt-1">
-                {draftConfig.furColor} · Atuendo {draftConfig.outfit}
+              <p className="text-xs text-stone-500">
+                Configura el género (Macho / Hembra), estilo de voz y atuendo del mesero virtual.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleSaveAppearance}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#9E3304] hover:bg-[#822802] text-white text-xs font-bold shadow-md transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              <span>Guardar Apariencia</span>
-            </button>
-            {savedToast && <div className="text-xs font-bold text-emerald-600">✓ Apariencia guardada correctamente</div>}
-          </div>
 
-          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 space-y-6">
-            <div>
-              <label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
-                Color y Personaje
+            {/* 1. Selector de Género (Michi Macho vs Michita Hembra) */}
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                1. Género del Asistente
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDraftConfig({
+                      ...draftConfig,
+                      gender: 'macho',
+                      name: 'Michi',
+                      voiceType: 'energico',
+                      voicePitch: 1.05,
+                    })
+                  }
+                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
+                    (draftConfig.gender || (draftConfig.furColor === 'Blanco' ? 'hembra' : 'macho')) === 'macho'
+                      ? 'border-[#9E3304] bg-amber-50/50 dark:bg-amber-950/30 ring-2 ring-amber-500/30'
+                      : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-2xl shrink-0">
+                    🐱
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                      Michi (Macho)
+                    </div>
+                    <div className="text-[11px] text-stone-500">
+                      Mesero clásico, voz cálida y enérgica estilo Talking Tom.
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDraftConfig({
+                      ...draftConfig,
+                      gender: 'hembra',
+                      name: 'Michita',
+                      voiceType: 'dulce',
+                      voicePitch: 1.25,
+                    })
+                  }
+                  className={`p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
+                    draftConfig.gender === 'hembra'
+                      ? 'border-[#9E3304] bg-pink-50/50 dark:bg-pink-950/30 ring-2 ring-pink-500/30'
+                      : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-pink-100 dark:bg-pink-900/40 flex items-center justify-center text-2xl shrink-0">
+                    🎀
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                      Michita (Hembra)
+                    </div>
+                    <div className="text-[11px] text-stone-500">
+                      Mesera cariñosa, tono dulce y alegre con expresiones tiernas.
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* 2. Configuración de Voz y Pruebas */}
+            <div className="space-y-3 pt-3 border-t border-stone-100 dark:border-stone-800">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  2. Estilo de Voz del Asistente
+                </label>
+                <button
+                  type="button"
+                  onClick={handleTestVoice}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-xs font-bold text-[#9E3304] dark:text-amber-300 hover:bg-amber-200"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Probar esta voz</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { id: 'dulce', label: 'Michita Dulce', desc: 'Femenina / Tierna', pitch: 1.25 },
+                  { id: 'energico', label: 'Michi Enérgico', desc: 'Masculina / Claro', pitch: 1.05 },
+                  { id: 'tom', label: 'Talking Tom', desc: 'Animado / Divertido', pitch: 1.35 },
+                  { id: 'natural', label: 'Natural Sistema', desc: 'Tono Estándar', pitch: 1.0 },
+                ].map((v) => {
+                  const active = (draftConfig.voiceType || (draftConfig.gender === 'hembra' ? 'dulce' : 'energico')) === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() =>
+                        setDraftConfig({
+                          ...draftConfig,
+                          voiceType: v.id as any,
+                          voicePitch: v.pitch,
+                        })
+                      }
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        active
+                          ? 'border-[#9E3304] bg-amber-50 dark:bg-amber-950/40 ring-1 ring-amber-500/30'
+                          : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-stone-900 dark:text-stone-100">{v.label}</div>
+                      <div className="text-[10px] text-stone-500">{v.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selector de voces del navegador */}
+              {systemVoices.length > 0 && (
+                <div className="pt-2">
+                  <label className="text-[11px] font-semibold text-stone-500 block mb-1">
+                    Voz detectada en el dispositivo (Navegador):
+                  </label>
+                  <select
+                    value={selectedVoiceName}
+                    onChange={(e) => setSelectedVoiceName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 focus:outline-none"
+                  >
+                    <option value="">Automática por género ({catGender === 'hembra' ? 'Femenina' : 'Masculina'})</option>
+                    {systemVoices.map((voice) => (
+                      <option key={voice.name} value={voice.name}>
+                        {voice.name} ({voice.lang})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Color de Pelaje */}
+            <div className="space-y-3 pt-3 border-t border-stone-100 dark:border-stone-800">
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                3. Color de Pelaje
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {FUR_OPTIONS.map((opt) => (
                   <button
                     key={opt.color}
                     type="button"
-                    onClick={() => setDraftConfig({ ...draftConfig, furColor: opt.color, name: opt.color === 'Blanco' ? 'Michita' : 'Michi' })}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-colors ${
+                    onClick={() => setDraftConfig({ ...draftConfig, furColor: opt.color })}
+                    className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
                       draftConfig.furColor === opt.color
-                        ? 'border-[#9E3304] bg-amber-50/50 dark:bg-amber-950/20 text-[#9E3304] dark:text-amber-300 font-bold'
-                        : 'border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                        ? 'border-[#9E3304] bg-amber-50 dark:bg-amber-950/40 ring-1 ring-amber-500/30'
+                        : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50'
                     }`}
                   >
-                    <span className={`w-5 h-5 rounded-full ${opt.swatch}`} />
-                    <span className="text-xs">{opt.label}</span>
+                    <span className={`w-5 h-5 rounded-full ${opt.swatch} shrink-0`} />
+                    <span className="text-xs font-bold text-stone-800 dark:text-stone-200">{opt.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
-                Atuendo de Servicio
+            {/* 4. Atuendo de Servicio */}
+            <div className="space-y-3 pt-3 border-t border-stone-100 dark:border-stone-800">
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                4. Atuendo de Servicio
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {OUTFIT_OPTIONS.map((opt) => (
                   <button
                     key={opt.outfit}
                     type="button"
                     onClick={() => setDraftConfig({ ...draftConfig, outfit: opt.outfit })}
-                    className={`p-3 rounded-xl border text-center transition-colors ${
+                    className={`p-3 rounded-xl border text-left transition-all ${
                       draftConfig.outfit === opt.outfit
-                        ? 'border-[#9E3304] bg-amber-50/50 dark:bg-amber-950/20 text-[#9E3304] dark:text-amber-300 font-bold'
-                        : 'border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300'
+                        ? 'border-[#9E3304] bg-amber-50 dark:bg-amber-950/40 ring-1 ring-amber-500/30'
+                        : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50'
                     }`}
                   >
-                    <div className="text-xs">{opt.outfit}</div>
-                    <div className="text-[10px] text-stone-400 mt-0.5">{opt.subtitle}</div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">{opt.outfit}</div>
+                    <div className="text-[10px] text-stone-500">{opt.subtitle}</div>
                   </button>
                 ))}
               </div>
             </div>
+
+            {/* Botón Guardar Cambios */}
+            <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between">
+              {savedToast ? (
+                <div className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                  <Check className="w-4 h-4" />
+                  <span>¡Apariencia y voz guardadas correctamente!</span>
+                </div>
+              ) : (
+                <div className="text-xs text-stone-400">
+                  Los cambios se sincronizan en todo el Smart Dining OS.
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleSaveAppearance}
+                className="px-6 py-2.5 rounded-xl bg-[#9E3304] hover:bg-[#822802] text-white text-xs font-bold shadow-md transition-colors flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>Guardar Cambios</span>
+              </button>
+            </div>
           </div>
         </div>
-      ); })()}
+      )}
 
-      {/* VISTA 3: GESTOS & LAB */}
+      {/* VISTA 3: LABORATORIO DE GESTOS */}
       {subView === 'gestos' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-8 flex flex-col items-center text-center space-y-4">
-            <div className="w-48 h-48 mx-auto flex items-center justify-center">
-              <img
-                src={currentCatImage}
-                alt={selectedGesture.title}
-                className={`w-full h-full object-contain filter drop-shadow-md transition-transform ${
-                  isPlayingGesture ? 'scale-110' : ''
-                }`}
-              />
-            </div>
+        <div className="space-y-6">
+          <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 space-y-5">
             <div>
-              <h2 className="text-lg font-bold text-stone-900 dark:text-stone-50">
-                {selectedGesture.title}
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                Laboratorio de Gestos y Expresiones
               </h2>
-              <p className="text-xs text-stone-500 mt-1">{selectedGesture.description}</p>
+              <p className="text-xs text-stone-500">
+                Prueba las animaciones, gestos y frases de voz predefinidas para {config.name}.
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={() => handlePlayGesture(selectedGesture)}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#9E3304] text-white text-xs font-bold"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Reproducir Gesto</span>
-            </button>
-          </div>
 
-          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 space-y-4">
-            <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-              Catálogo de 10 Gestos de Michi
-            </h3>
-            <ul className="divide-y divide-stone-100 dark:divide-stone-800">
-              {filteredGestures.map((g) => (
-                <li key={g.id} className="py-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">{g.title}</div>
-                    <div className="text-[11px] text-stone-500">{g.speechLine}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {MICHI_GESTURES.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => handlePlayGesture(g)}
+                  className={`p-4 rounded-xl border text-left transition-all ${
+                    selectedGesture.id === g.id
+                      ? 'border-[#9E3304] bg-amber-50/60 dark:bg-amber-950/30 ring-1 ring-amber-500/30'
+                      : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-stone-900 dark:text-stone-100">{g.title}</span>
+                    <Play className="w-3.5 h-3.5 text-[#9E3304] dark:text-amber-400" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handlePlayGesture(g)}
-                    className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-[#9E3304] hover:bg-amber-100"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                  </button>
-                </li>
+                  <div className="text-[11px] text-stone-500 mb-2">{g.description}</div>
+                  <div className="text-[10px] italic text-[#9E3304] dark:text-amber-300 truncate">
+                    “{g.speechLine}”
+                  </div>
+                </button>
               ))}
-            </ul>
+            </div>
           </div>
         </div>
       )}

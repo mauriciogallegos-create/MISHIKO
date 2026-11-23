@@ -634,6 +634,7 @@ export default function App() {
                 tableNumber={activeTableNumber}
                 config={michiConfig}
                 initialSubView={michiSubView}
+                activeOrder={activeDinerOrder}
                 onUpdateConfig={setMichiConfig}
                 onApplyGestureToMenu={handleApplyGestureToMenu}
                 onAddParsedItemsToCart={handleAddParsedItemsToCart}

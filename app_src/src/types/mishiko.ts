@@ -137,10 +137,16 @@ export interface MichiAlert {
 export type FurColor = 'Naranja' | 'Blanco' | 'Gris' | 'Esmoquin';
 export type MichiOutfit = 'Corbatín' | 'Delantal' | 'Sombrero' | 'Campanilla';
 
+export type MichiGender = 'macho' | 'hembra';
+
 export interface MichiConfig {
   name: string;
   furColor: FurColor;
   outfit: MichiOutfit;
+  gender?: MichiGender;
+  voiceType?: 'dulce' | 'energico' | 'natural' | 'tom';
+  voicePitch?: number;
+  voiceRate?: number;
   voiceEnabled: boolean;
   autoSpeak: boolean;
   gestureSpeed: 0.5 | 1.0 | 1.5;
