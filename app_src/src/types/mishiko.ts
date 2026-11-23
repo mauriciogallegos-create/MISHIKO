@@ -145,9 +145,6 @@ export type MichiVoiceType =
   | 'anime-kawaii'
   | 'anime-shonen'
   | 'chibi'
-  | 'rem'
-  | 'emilia'
-  | 'subaru'
   | 'natural';
 
 export interface MichiConfig {

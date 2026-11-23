@@ -756,16 +756,16 @@ export const MICHI_GESTURES: MichiGesture[] = [
 ];
 
 export const INITIAL_MICHI_CONFIG: MichiConfig = {
-  name: 'Rem 💙',
-  furColor: 'Blanco',
-  outfit: 'Delantal',
-  gender: 'hembra',
-  voiceType: 'rem',
-  voicePitch: 1.45,
-  voiceRate: 1.02,
+  name: 'Michi',
+  furColor: 'Naranja',
+  outfit: 'Corbatín',
+  gender: 'macho',
+  voiceType: 'energico',
+  voicePitch: 1.05,
+  voiceRate: 1.0,
   voiceEnabled: true,
   autoSpeak: false,
   gestureSpeed: 1.0,
   activeGestureId: 'bienvenida',
-  moodLabel: 'Devota & Atenta',
+  moodLabel: 'Ronroneando',
 };
