@@ -138,7 +138,17 @@ export type FurColor = 'Naranja' | 'Blanco' | 'Gris' | 'Esmoquin';
 export type MichiOutfit = 'Corbatín' | 'Delantal' | 'Sombrero' | 'Campanilla';
 
 export type MichiGender = 'macho' | 'hembra';
-export type MichiVoiceType = 'dulce' | 'energico' | 'tom' | 'anime-kawaii' | 'anime-shonen' | 'chibi' | 'natural';
+export type MichiVoiceType =
+  | 'dulce'
+  | 'energico'
+  | 'tom'
+  | 'anime-kawaii'
+  | 'anime-shonen'
+  | 'chibi'
+  | 'rem'
+  | 'emilia'
+  | 'subaru'
+  | 'natural';
 
 export interface MichiConfig {
   name: string;

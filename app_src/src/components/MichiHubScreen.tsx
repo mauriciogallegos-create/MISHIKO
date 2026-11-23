@@ -4,6 +4,7 @@ import {
   Check,
   ChefHat,
   Flame,
+  Hand,
   Heart,
   Keyboard,
   Mic,
@@ -99,6 +100,16 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   const [michiPose, setMichiPose] = useState<MichiPoseType>('saludo');
   const [isJumping, setIsJumping] = useState(false);
   const [activeRec, setActiveRec] = useState<any>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+    setIsSpeaking(false);
+  };
 
   // Voces del sistema
   const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -272,7 +283,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     } catch (_) {}
   };
 
-  // Síntesis de voz con soporte avanzado para género, anime y diferentes estilos gratis
+  // Síntesis de voz con soporte avanzado para Re:Zero (Rem, Emilia, Subaru), Anime y diferentes estilos gratis
   const speakLine = (line: string, customRate?: number) => {
     if (!config.voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
@@ -283,9 +294,24 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       utterance.lang = 'es-PE';
       utterance.rate = customRate || config.voiceRate || 1.0;
 
-      // Asignar tono y timbre según estilo (Anime Kawaii, Shonen, Chibi, Tom, Dulce, Enérgico)
-      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'anime-kawaii' : 'energico');
-      if (voiceStyle === 'anime-kawaii') {
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      // Asignar tono y timbre según estilo (Re:Zero Rem, Emilia, Subaru, Anime Kawaii, Shonen, Chibi, etc.)
+      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'rem' : 'energico');
+      if (voiceStyle === 'rem') {
+        playNyanSound();
+        utterance.pitch = config.voicePitch || 1.38; // Rem: dulce, fiel, respetuosa y tierna
+        utterance.rate = config.voiceRate || 1.04;
+      } else if (voiceStyle === 'emilia') {
+        playNyanSound();
+        utterance.pitch = config.voicePitch || 1.30; // Emilia: suave, noble, media elfa
+        utterance.rate = config.voiceRate || 1.02;
+      } else if (voiceStyle === 'subaru') {
+        utterance.pitch = config.voicePitch || 1.10; // Subaru: shonen enérgico e hiperactivo
+        utterance.rate = config.voiceRate || 1.18;
+      } else if (voiceStyle === 'anime-kawaii') {
         playNyanSound();
         utterance.pitch = config.voicePitch || 1.48; // Agudo anime waifu/neko
         utterance.rate = config.voiceRate || 1.12;
@@ -312,8 +338,8 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
         const found = systemVoices.find((v) => v.name === selectedVoiceName);
         if (found) utterance.voice = found;
       } else if (systemVoices.length > 0) {
-        // Asignación inteligente de voz española según género
-        if (catGender === 'hembra') {
+        // Asignación inteligente de voz española según género o personaje
+        if (catGender === 'hembra' || voiceStyle === 'rem' || voiceStyle === 'emilia') {
           const female = systemVoices.find((v) =>
             /sabina|helena|laura|paulina|monica|female|mujer|maria|zira/i.test(v.name),
           ) || systemVoices.find((v) => v.lang.startsWith('es'));
@@ -328,7 +354,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
 
       window.speechSynthesis.speak(utterance);
     } catch {
-      // Ignorar errores en navegadores restrictivos
+      setIsSpeaking(false);
     }
   };
 
@@ -414,6 +440,47 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
 
     // Agregar lo que dijo el usuario al feed para que SE QUEDE visible
     addChatMessage('user', rawText);
+
+    // 0. Interrupción, cambio de opinión o desvío de Michi
+    if (/(espera|detente|para|calla|silencio|cambie|cambiar|opinion|opinión|desvia|desviando|desviaste|eso no|otra cosa|mejor no|no quiero eso|corrige|esperate|equivocaste)/i.test(text)) {
+      stopSpeaking();
+      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'rem' : 'energico');
+      let resp = '';
+      if (voiceStyle === 'rem') {
+        resp = `¡Rem se detiene al instante! 💙 Discúlpeme si me desvié o malinterpreté su deseo, querido comensal. Por favor dígame qué platillo o bebida prefiere cambiar y Rem lo anotará con devoción.`;
+      } else if (voiceStyle === 'emilia') {
+        resp = `¡Ah, espera! Me detengo ahora mismo 💜. Tienes razón, me distraje un poquito... Dime con confianza qué prefieres ordenar en su lugar, ¡te escucho atenta!`;
+      } else if (voiceStyle === 'subaru') {
+        resp = `¡Frenos de mano activados! 🛑 ¡Natsuki Subaru rectifica su camino! ¿Qué cambiamos de la orden o qué otra delicia se te antoja para tu mesa?`;
+      } else if (catGender === 'hembra') {
+        resp = `¡Miau! Me detengo de inmediato 🐾. Perdóname si me desvié. ¿Qué deseas cambiar de tu comanda o qué prefieres pedir en su lugar? Soy todo oídos.`;
+      } else {
+        resp = `¡Freno en seco! 🐱 Tienes toda la razón comensal, me desvié. Me callo y te escucho: ¿qué platillo prefieres cambiar o qué se te antoja ordenar ahora?`;
+      }
+      setAssistantReply(resp);
+      setMichiPose('curioso');
+      speakLine(resp);
+      addChatMessage('michi', resp);
+      return;
+    }
+
+    // 0.1 Consultas de Re:Zero (Rem, Emilia, Subaru)
+    if (/(rem|emilia|subaru|re\s*zero|rezero)/i.test(text)) {
+      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'rem' : 'energico');
+      let resp = '';
+      if (voiceStyle === 'rem' || /rem/i.test(text)) {
+        resp = `¡Aquí está Rem, su fiel sirvienta de MISHIKO! 💙 Aunque Subaru-kun no esté cerca, Rem cuidará con todo su corazón cada platillo de su Mesa #${tableNumber}. ¿Le gustaría probar nuestro Ramen o unos dulces Mochis?`;
+      } else if (voiceStyle === 'emilia' || /emilia/i.test(text)) {
+        resp = `¡Hola! Soy Emilia, la media elfa 💜. En MISHIKO uso mi magia para asegurar que cada bocado sea puro y delicioso. ¡Pídeme lo que desees con total confianza!`;
+      } else {
+        resp = `¡Natsuki Subaru al habla! 🧡 ¡El mesero que desafía la muerte por la mejor comida! En Mesa #${tableNumber} no dejaremos que nada se enfríe. ¿Qué pedimos hoy, compañero?`;
+      }
+      setAssistantReply(resp);
+      setMichiPose('risa');
+      speakLine(resp);
+      addChatMessage('michi', resp);
+      return;
+    }
 
     // 1. Guardrail: temas fuera del restaurante (fútbol, política, noticias, etc.)
     const fueraDeDominio = /(futbol|fútbol|partido|gol|alianza|cristal|messi|ronaldo|politica|política|presidente|elecciones|noticia|noticias|guerra|clase|tarea|examen|apuesta)/i;
@@ -512,8 +579,10 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     }
   };
 
-  // Control del micrófono continuo (Permite hablar seguido sin que se corte)
+  // Control del micrófono continuo (Permite hablar seguido sin que se corte e interrumpe a Michi)
   const startListening = () => {
+    stopSpeaking(); // Interrupción inmediata (Barge-in): si Michi estaba hablando, se calla
+
     const SpeechRec =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -533,6 +602,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       rec.interimResults = true;
 
       rec.onstart = () => {
+        stopSpeaking();
         setIsListening(true);
         setSecondsListening(0);
       };
@@ -540,6 +610,8 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       let timer: any = null;
 
       rec.onresult = (event: any) => {
+        stopSpeaking(); // Si el comensal empieza a hablar, silenciar a Michi al instante
+
         let currentTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           currentTranscript += event.results[i][0].transcript;
@@ -551,10 +623,10 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
 
           clearTimeout(timer);
           timer = setTimeout(() => {
-            if (text.length > 3) {
+            if (text.length > 2) {
               processUserInput(text);
             }
-          }, 1500);
+          }, 1400);
         }
       };
 
@@ -678,14 +750,23 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   };
 
   const handleTestVoice = () => {
-    const isAnime = config.voiceType === 'anime-kawaii' || config.voiceType === 'chibi';
-    const testLine = catGender === 'hembra'
-      ? (isAnime
-          ? `¡Konnichiwa, senpai! Nyaaan~ 🐾 Soy Michita-chan, tu mesera waifu en MISHIKO. ¡Es un honor atenderte con todo mi cariño!`
-          : `¡Miau! Hola querido comensal, soy Michita. Esta es mi voz virtual en español. ¡Estoy lista para atenderte con mucho cariño!`)
-      : (config.voiceType === 'anime-shonen'
-          ? `¡Irasshaimase! 🔥 ¡Soy Michi-kun! ¡El fuego del wok y la sazón de la cocina están ardiendo para tu mesa!`
-          : `¡Miau! Hola comensal, soy Michi tu mesero virtual. Esta es mi voz de atención en vivo. ¿Qué vamos a pedir hoy?`);
+    const vType = config.voiceType || (catGender === 'hembra' ? 'rem' : 'energico');
+    let testLine = '';
+    if (vType === 'rem') {
+      testLine = `¡Konnichiwa! Soy Rem, su doncella en MISHIKO 💙. Rem está lista para servir a su comensal favorito en Mesa #${tableNumber}. ¡Que disfrute mucho su comida!`;
+    } else if (vType === 'emilia') {
+      testLine = `¡Hola, comensal! Soy Emilia 💜. Es maravilloso tenerte en MISHIKO. ¡Déjame recomendarte los platillos más mágicos de la carta!`;
+    } else if (vType === 'subaru') {
+      testLine = `¡Irasshai! ¡Natsuki Subaru presente en MISHIKO! 🧡 ¡Hoy conquistamos el menú con la mejor actitud! ¿Qué se te antoja pedir?`;
+    } else if (vType === 'anime-kawaii') {
+      testLine = `¡Konnichiwa, senpai! Nyaaan~ 🐾 Soy Michita-chan, tu mesera waifu en MISHIKO. ¡Es un honor atenderte con todo mi cariño!`;
+    } else if (vType === 'anime-shonen') {
+      testLine = `¡Irasshaimase! 🔥 ¡Soy Michi-kun! ¡El fuego del wok y la sazón de la cocina están ardiendo para tu mesa!`;
+    } else if (catGender === 'hembra') {
+      testLine = `¡Miau! Hola querido comensal, soy Michita. Esta es mi voz virtual en español. ¡Estoy lista para atenderte con mucho cariño!`;
+    } else {
+      testLine = `¡Miau! Hola comensal, soy Michi tu mesero virtual. Esta es mi voz de atención en vivo. ¿Qué vamos a pedir hoy?`;
+    }
     setAssistantReply(testLine);
     speakLine(testLine);
     addChatMessage('michi', testLine);
@@ -795,6 +876,23 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                 “{assistantReply}”
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-stone-800 border-b-2 border-r-2 border-amber-400 dark:border-amber-600/60 rotate-45" />
               </div>
+
+              {/* Botón flotante para interrumpir cuando Michi esté hablando */}
+              {isSpeaking && (
+                <div className="my-2 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopSpeaking();
+                      processUserInput('espera, cambié de opinión');
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-950/70 dark:text-red-300 dark:hover:bg-red-900 border border-red-300 dark:border-red-700 text-xs font-bold shadow-md animate-bounce transition-all cursor-pointer"
+                  >
+                    <Hand className="w-4 h-4 text-red-600 animate-pulse" />
+                    <span>✋ Interrumpir a Michi / Cambiar de opinión</span>
+                  </button>
+                </div>
+              )}
 
               {/* Escenario del Personaje (Tócame para interactuar) */}
               <div
@@ -1212,6 +1310,9 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
+                  { id: 'rem', label: '💙 Rem (Re:Zero)', desc: 'Maid Fiel / Dulce & Devota', pitch: 1.38 },
+                  { id: 'emilia', label: '💜 Emilia (Re:Zero)', desc: 'Media Elfa / Noble & Suave', pitch: 1.30 },
+                  { id: 'subaru', label: '🧡 Subaru (Re:Zero)', desc: 'Natsuki Subaru / Shonen', pitch: 1.10 },
                   { id: 'anime-kawaii', label: '🌸 Anime Kawaii', desc: 'Michita-chan / Waifu Nya~', pitch: 1.48 },
                   { id: 'anime-shonen', label: '🔥 Anime Shonen', desc: 'Michi-kun / Wok Hero', pitch: 1.15 },
                   { id: 'chibi', label: '🐱 Chibi Neko', desc: 'Gatito Tierno Chibi', pitch: 1.65 },
@@ -1219,7 +1320,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                   { id: 'energico', label: '🎙️ Michi Enérgico', desc: 'Masculina / Claro', pitch: 1.05 },
                   { id: 'tom', label: '😸 Talking Tom', desc: 'Animado / Divertido', pitch: 1.35 },
                 ].map((v) => {
-                  const active = (draftConfig.voiceType || (draftConfig.gender === 'hembra' ? 'anime-kawaii' : 'energico')) === v.id;
+                  const active = (draftConfig.voiceType || (draftConfig.gender === 'hembra' ? 'rem' : 'energico')) === v.id;
                   return (
                     <button
                       key={v.id}
