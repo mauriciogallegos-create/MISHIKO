@@ -786,7 +786,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>Gestos & Lab</span>
+            <span>Gestos & Voces</span>
           </button>
         </div>
       </div>
@@ -1399,9 +1399,105 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
         </div>
       )}
 
-      {/* VISTA 3: LABORATORIO DE GESTOS */}
+      {/* VISTA 3: LABORATORIO DE GESTOS Y VOCES */}
       {subView === 'gestos' && (
         <div className="space-y-6">
+          {/* 1. Selector de Estilo de Voz para Gestos y Michi */}
+          <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 text-[#9E3304] dark:text-amber-400" />
+                  <span>Estilo de Voz de los Gestos y Michi</span>
+                </h2>
+                <p className="text-xs text-stone-500">
+                  Selecciona la voz con la que hablará Michi al interactuar y ejecutar sus gestos.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleTestVoice}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-xs font-bold text-[#9E3304] dark:text-amber-300 hover:bg-amber-100 cursor-pointer"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>Probar esta voz</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[
+                { id: 'dulce', label: '🎀 Michita Dulce', desc: 'Femenina / Tierna & Clara', pitch: 1.25 },
+                { id: 'energico', label: '🎙️ Michi Enérgico', desc: 'Masculina / Claro & Amigable', pitch: 1.05 },
+                { id: 'anime-kawaii', label: '🌸 Anime Kawaii', desc: 'Michita-chan / Waifu Nya~', pitch: 1.48 },
+                { id: 'anime-shonen', label: '🔥 Anime Shonen', desc: 'Michi-kun / Wok Hero', pitch: 1.15 },
+                { id: 'chibi', label: '🐱 Chibi Neko', desc: 'Gatito Tierno Chibi', pitch: 1.65 },
+                { id: 'tom', label: '😸 Talking Tom', desc: 'Animado / Divertido', pitch: 1.35 },
+              ].map((v) => {
+                const active = (config.voiceType || (catGender === 'hembra' ? 'dulce' : 'energico')) === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => {
+                      const updated = {
+                        ...config,
+                        voiceType: v.id as any,
+                        voicePitch: v.pitch,
+                      };
+                      onUpdateConfig(updated);
+                      setDraftConfig(updated);
+                      speakLine(
+                        v.id === 'anime-kawaii'
+                          ? '¡Konnichiwa! Voz Anime Kawaii activada nya~'
+                          : v.id === 'anime-shonen'
+                          ? '¡Voz Anime Shonen activada con todo el poder!'
+                          : v.id === 'chibi'
+                          ? '¡Gatito chibi listo para hablar miau!'
+                          : v.id === 'tom'
+                          ? '¡Voz Talking Tom activada!'
+                          : v.id === 'dulce'
+                          ? '¡Voz Michita Dulce activada!'
+                          : '¡Voz Michi Enérgico activada!',
+                        undefined,
+                        v.id as any
+                      );
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      active
+                        ? 'border-[#9E3304] bg-amber-50 dark:bg-amber-950/40 ring-1 ring-amber-500/30'
+                        : 'border-stone-200 dark:border-stone-800 hover:bg-stone-50'
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">{v.label}</div>
+                    <div className="text-[10px] text-stone-500">{v.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selector de voces del navegador */}
+            {systemVoices.length > 0 && (
+              <div className="pt-2">
+                <label className="text-[11px] font-semibold text-stone-500 block mb-1">
+                  Voz detectada en el dispositivo (Navegador):
+                </label>
+                <select
+                  value={selectedVoiceName}
+                  onChange={(e) => setSelectedVoiceName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 focus:outline-none"
+                >
+                  <option value="">Automática por género ({catGender === 'hembra' ? 'Femenina' : 'Masculina'})</option>
+                  {systemVoices.map((voice) => (
+                    <option key={voice.name} value={voice.name}>
+                      {voice.name} ({voice.lang})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Laboratorio de Gestos y Expresiones */}
           <div className="rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-6 space-y-5">
             <div>
               <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
