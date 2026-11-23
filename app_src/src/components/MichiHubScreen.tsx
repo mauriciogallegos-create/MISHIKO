@@ -253,7 +253,26 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
     return sum + (m.dish.price + delta) * m.quantity;
   }, 0);
 
-  // Síntesis de voz con soporte avanzado para género y diferentes estilos
+  // Sonido SFX maullido dulce Nyan~ con Web Audio API (100% gratuito)
+  const playNyanSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(650, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1150, audioCtx.currentTime + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(820, audioCtx.currentTime + 0.28);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.28);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.28);
+    } catch (_) {}
+  };
+
+  // Síntesis de voz con soporte avanzado para género, anime y diferentes estilos gratis
   const speakLine = (line: string, customRate?: number) => {
     if (!config.voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
       return;
@@ -264,9 +283,20 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       utterance.lang = 'es-PE';
       utterance.rate = customRate || config.voiceRate || 1.0;
 
-      // Asignar tono según estilo y género (macho vs hembra)
-      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'dulce' : 'energico');
-      if (voiceStyle === 'tom') {
+      // Asignar tono y timbre según estilo (Anime Kawaii, Shonen, Chibi, Tom, Dulce, Enérgico)
+      const voiceStyle = config.voiceType || (catGender === 'hembra' ? 'anime-kawaii' : 'energico');
+      if (voiceStyle === 'anime-kawaii') {
+        playNyanSound();
+        utterance.pitch = config.voicePitch || 1.48; // Agudo anime waifu/neko
+        utterance.rate = config.voiceRate || 1.12;
+      } else if (voiceStyle === 'anime-shonen') {
+        utterance.pitch = config.voicePitch || 1.15; // Shonen culinario enérgico
+        utterance.rate = config.voiceRate || 1.15;
+      } else if (voiceStyle === 'chibi') {
+        playNyanSound();
+        utterance.pitch = config.voicePitch || 1.65; // Chibi súper tierno
+        utterance.rate = config.voiceRate || 1.18;
+      } else if (voiceStyle === 'tom') {
         utterance.pitch = 1.35; // Estilo Talking Tom divertido
         utterance.rate = 1.08;
       } else if (voiceStyle === 'dulce' || catGender === 'hembra') {
@@ -277,7 +307,7 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
         utterance.pitch = 1.0;
       }
 
-      // Si el usuario seleccionó una voz específica
+      // Si el usuario seleccionó una voz específica del navegador
       if (selectedVoiceName && systemVoices.length > 0) {
         const found = systemVoices.find((v) => v.name === selectedVoiceName);
         if (found) utterance.voice = found;
@@ -442,7 +472,18 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
       }
     }
 
-    // 6. Saludo
+    // 6. Saludo y Modo Anime
+    if (/(anime|konnichiwa|arigato|senpai|kawaii|nya|nyan|saludo anime)/i.test(text)) {
+      const resp = catGender === 'hembra'
+        ? `¡Konnichiwa, senpai! Nyaaan~ 🐾 Soy Michita-chan, tu mesera waifu en MISHIKO. ¡Es un honor atenderte! Te recomiendo un delicioso Ramen Tonkotsu o unos Mochis dulces. ¿Qué se te antoja hoy? 💖`
+        : `¡Irasshaimase, nakama! 🔥 Soy Michi-kun. ¡La pasión por la cocina tradicional y el fuego del wok arden en MISHIKO! ¿Qué platillo legendario deseas probar hoy? 🍜`;
+      setAssistantReply(resp);
+      setMichiPose('risa');
+      speakLine(resp);
+      addChatMessage('michi', resp);
+      return;
+    }
+
     if (/(hola|buenos dias|buenas tardes|buenas noches|michi|michita|que tal|saluda)/i.test(text)) {
       const resp = catGender === 'hembra'
         ? `¡Hola, qué alegría verte! Bienvenido a MISHIKO. Soy ${config.name}, tu mesera virtual. ¿Qué delicia se te antoja disfrutar hoy? 🐾`
@@ -637,9 +678,14 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   };
 
   const handleTestVoice = () => {
+    const isAnime = config.voiceType === 'anime-kawaii' || config.voiceType === 'chibi';
     const testLine = catGender === 'hembra'
-      ? `¡Miau! Hola querido comensal, soy Michita. Esta es mi voz virtual en español. ¡Estoy lista para atenderte con mucho cariño!`
-      : `¡Miau! Hola comensal, soy Michi tu mesero virtual. Esta es mi voz de atención en vivo. ¿Qué vamos a pedir hoy?`;
+      ? (isAnime
+          ? `¡Konnichiwa, senpai! Nyaaan~ 🐾 Soy Michita-chan, tu mesera waifu en MISHIKO. ¡Es un honor atenderte con todo mi cariño!`
+          : `¡Miau! Hola querido comensal, soy Michita. Esta es mi voz virtual en español. ¡Estoy lista para atenderte con mucho cariño!`)
+      : (config.voiceType === 'anime-shonen'
+          ? `¡Irasshaimase! 🔥 ¡Soy Michi-kun! ¡El fuego del wok y la sazón de la cocina están ardiendo para tu mesa!`
+          : `¡Miau! Hola comensal, soy Michi tu mesero virtual. Esta es mi voz de atención en vivo. ¿Qué vamos a pedir hoy?`);
     setAssistantReply(testLine);
     speakLine(testLine);
     addChatMessage('michi', testLine);
@@ -852,6 +898,62 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                 >
                   ⚽ ¿Quién ganó el partido? (Filtro)
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => processUserInput('Michita-chan, salúdame al estilo anime')}
+                  className="px-3 py-1.5 rounded-lg bg-pink-50 dark:bg-pink-950/40 border border-pink-300 dark:border-pink-800 text-xs font-bold text-pink-700 dark:text-pink-300 hover:bg-pink-100 flex items-center gap-1"
+                >
+                  <span>🌸 Saludo Anime Nya~</span>
+                </button>
+              </div>
+
+              {/* Guía Visual: ¿Cómo Preguntarle a Michi? */}
+              <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500 mb-2">
+                  📖 Guía de Ejemplos: ¿Cómo Preguntar?
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  <div
+                    onClick={() => processUserInput('¿Qué comida está lista?')}
+                    className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 hover:border-amber-400 cursor-pointer transition-colors"
+                  >
+                    <div className="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1">
+                      <span>🍲 Consultar comanda:</span>
+                    </div>
+                    <div className="text-stone-500">"¿Qué comida está lista?" o "¿Cómo va mi pedido?"</div>
+                  </div>
+
+                  <div
+                    onClick={() => processUserInput('Quiero dos hamburguesas smash dobles y una limonada frozen')}
+                    className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 hover:border-amber-400 cursor-pointer transition-colors"
+                  >
+                    <div className="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1">
+                      <span>🍔 Ordenar por voz:</span>
+                    </div>
+                    <div className="text-stone-500">"Quiero dos smash burger dobles y una limonada"</div>
+                  </div>
+
+                  <div
+                    onClick={() => processUserInput('Tengo mucho calor, ¿qué bebida me recomiendas?')}
+                    className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 hover:border-amber-400 cursor-pointer transition-colors"
+                  >
+                    <div className="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1">
+                      <span>☀️ Clima & Bebidas:</span>
+                    </div>
+                    <div className="text-stone-500">"Tengo calor, ¿qué bebidas frías tienen?"</div>
+                  </div>
+
+                  <div
+                    onClick={() => processUserInput('¿Cuál es la especialidad más deliciosa de la casa?')}
+                    className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 hover:border-amber-400 cursor-pointer transition-colors"
+                  >
+                    <div className="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1">
+                      <span>⭐ Recomendación:</span>
+                    </div>
+                    <div className="text-stone-500">"¿Cuál es el plato más recomendado?"</div>
+                  </div>
+                </div>
               </div>
 
               {/* Botón de texto alternativo */}
@@ -1108,14 +1210,16 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
-                  { id: 'dulce', label: 'Michita Dulce', desc: 'Femenina / Tierna', pitch: 1.25 },
-                  { id: 'energico', label: 'Michi Enérgico', desc: 'Masculina / Claro', pitch: 1.05 },
-                  { id: 'tom', label: 'Talking Tom', desc: 'Animado / Divertido', pitch: 1.35 },
-                  { id: 'natural', label: 'Natural Sistema', desc: 'Tono Estándar', pitch: 1.0 },
+                  { id: 'anime-kawaii', label: '🌸 Anime Kawaii', desc: 'Michita-chan / Waifu Nya~', pitch: 1.48 },
+                  { id: 'anime-shonen', label: '🔥 Anime Shonen', desc: 'Michi-kun / Wok Hero', pitch: 1.15 },
+                  { id: 'chibi', label: '🐱 Chibi Neko', desc: 'Gatito Tierno Chibi', pitch: 1.65 },
+                  { id: 'dulce', label: '🎀 Michita Dulce', desc: 'Femenina / Tierna', pitch: 1.25 },
+                  { id: 'energico', label: '🎙️ Michi Enérgico', desc: 'Masculina / Claro', pitch: 1.05 },
+                  { id: 'tom', label: '😸 Talking Tom', desc: 'Animado / Divertido', pitch: 1.35 },
                 ].map((v) => {
-                  const active = (draftConfig.voiceType || (draftConfig.gender === 'hembra' ? 'dulce' : 'energico')) === v.id;
+                  const active = (draftConfig.voiceType || (draftConfig.gender === 'hembra' ? 'anime-kawaii' : 'energico')) === v.id;
                   return (
                     <button
                       key={v.id}
