@@ -144,17 +144,32 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
   );
   const [isPlayingGesture, setIsPlayingGesture] = useState(false);
 
-  // Cargar voces en español del navegador
+  // Cargar voces en español del navegador y priorizar automáticamente voces Humanas Naturales (Azure / Edge / Google)
   useEffect(() => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     const updateVoices = () => {
       const allVoices = window.speechSynthesis.getVoices();
       const spanish = allVoices.filter((v) => v.lang.toLowerCase().startsWith('es'));
-      setSystemVoices(spanish.length > 0 ? spanish : allVoices);
+      const available = spanish.length > 0 ? spanish : allVoices;
+      setSystemVoices(available);
+
+      // Priorizar automáticamente la voz humana más realista (Online / Natural / Neural de Microsoft / Google)
+      const isHembra = catGender === 'hembra';
+      const best = isHembra
+        ? available.find((v) => /natural|online|neural/i.test(v.name) && /(salma|dalia|elvira|paulina|female|mujer)/i.test(v.name))
+          || available.find((v) => /natural|online|neural/i.test(v.name))
+          || available.find((v) => /google/i.test(v.name))
+        : available.find((v) => /natural|online|neural/i.test(v.name) && /(jorge|alvaro|enrique|male|hombre)/i.test(v.name))
+          || available.find((v) => /natural|online|neural/i.test(v.name))
+          || available.find((v) => /google/i.test(v.name));
+
+      if (best) {
+        setSelectedVoiceName(best.name);
+      }
     };
     updateVoices();
     window.speechSynthesis.onvoiceschanged = updateVoices;
-  }, []);
+  }, [catGender]);
 
   useEffect(() => {
     setSubView(initialSubView);
@@ -324,29 +339,42 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
         chosenRate = 1.0;
       }
 
-      utterance.pitch = chosenPitch;
-      utterance.rate = chosenRate;
-
-      // Si el usuario seleccionó una voz específica del navegador
+      // Selección de la voz más realista y humana disponible
+      let voiceToUse: SpeechSynthesisVoice | null = null;
       if (selectedVoiceName && systemVoices.length > 0) {
-        const found = systemVoices.find((v) => v.name === selectedVoiceName);
-        if (found) utterance.voice = found;
-      } else if (systemVoices.length > 0) {
-        // Asignación inteligente de voz según género
+        voiceToUse = systemVoices.find((v) => v.name === selectedVoiceName) || null;
+      }
+      if (!voiceToUse && systemVoices.length > 0) {
         if (catGender === 'hembra' || voiceStyle === 'dulce' || voiceStyle === 'anime-kawaii' || voiceStyle === 'chibi') {
-          const female = systemVoices.find((v) =>
-            /(salma|dalia|sabina|helena|laura|paulina|monica|paloma|elena|carmen|marta|conchita|lucia|female|mujer|maria)/i.test(v.name) && v.lang.startsWith('es'),
-          ) || systemVoices.find((v) => /(female|mujer)/i.test(v.name))
-            || systemVoices.find((v) => v.lang.startsWith('es'));
-          if (female) utterance.voice = female;
+          // Prioridad 1: Voces Humanas Neurales de Microsoft Azure / Edge (Salma, Dalia, Elvira)
+          voiceToUse = systemVoices.find((v) =>
+            /natural|online|neural/i.test(v.name) && /(salma|dalia|elvira|female|mujer)/i.test(v.name)
+          ) || systemVoices.find((v) => /natural|online|neural/i.test(v.name))
+            || systemVoices.find((v) => /google/i.test(v.name))
+            || systemVoices.find((v) => /(sabina|helena|laura|paulina|monica|paloma|elena|carmen|marta|conchita|lucia|female|mujer|maria)/i.test(v.name) && v.lang.startsWith('es'))
+            || systemVoices.find((v) => v.lang.startsWith('es')) || null;
         } else {
-          const male = systemVoices.find((v) =>
-            /(jorge|alvaro|raul|pablo|enrique|diego|carlos|pedro|mateo|male|hombre)/i.test(v.name) && v.lang.startsWith('es'),
-          ) || systemVoices.find((v) => /(male|hombre)/i.test(v.name))
-            || systemVoices.find((v) => v.lang.startsWith('es'));
-          if (male) utterance.voice = male;
+          // Prioridad 1: Voces Humanas Neurales de Microsoft Azure / Edge (Jorge, Alvaro)
+          voiceToUse = systemVoices.find((v) =>
+            /natural|online|neural/i.test(v.name) && /(jorge|alvaro|male|hombre)/i.test(v.name)
+          ) || systemVoices.find((v) => /natural|online|neural/i.test(v.name))
+            || systemVoices.find((v) => /google/i.test(v.name))
+            || systemVoices.find((v) => /(jorge|alvaro|raul|pablo|enrique|diego|carlos|pedro|mateo|male|hombre)/i.test(v.name) && v.lang.startsWith('es'))
+            || systemVoices.find((v) => v.lang.startsWith('es')) || null;
         }
       }
+
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+        // Si es una voz Natural/Online de Azure, mantener pitch en 1.0 para conservar su timbre humano de estudio
+        if (/natural|online|neural/i.test(voiceToUse.name) && (voiceStyle === 'energico' || voiceStyle === 'dulce')) {
+          chosenPitch = 1.0;
+          chosenRate = 1.0;
+        }
+      }
+
+      utterance.pitch = chosenPitch;
+      utterance.rate = chosenRate;
 
       window.speechSynthesis.speak(utterance);
     } catch {
@@ -800,9 +828,16 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
             <div className="rounded-3xl bg-gradient-to-b from-amber-500/10 via-white to-stone-50 dark:from-amber-950/20 dark:via-[#191614] dark:to-[#12100E] border border-amber-500/20 dark:border-stone-800 p-6 text-center relative overflow-hidden shadow-sm">
               {/* Header con botón de voz ON/OFF y probar voz */}
               <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-xs font-bold text-[#9E3304] dark:text-amber-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>En Servicio · Mesa #{tableNumber}</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 text-xs font-bold text-[#9E3304] dark:text-amber-300">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>En Servicio · Mesa #{tableNumber}</span>
+                  </div>
+                  {selectedVoiceName && /natural|online|neural/i.test(selectedVoiceName) && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                      ✨ Voz Humana Natural Activa
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1315,12 +1350,15 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                     onChange={(e) => setSelectedVoiceName(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 focus:outline-none"
                   >
-                    <option value="">Automática por género ({catGender === 'hembra' ? 'Femenina' : 'Masculina'})</option>
-                    {systemVoices.map((voice) => (
-                      <option key={voice.name} value={voice.name}>
-                        {voice.name} ({voice.lang})
-                      </option>
-                    ))}
+                    <option value="">Automática de alta fidelidad ({catGender === 'hembra' ? 'Femenina' : 'Masculina'})</option>
+                    {systemVoices.map((voice) => {
+                      const isNatural = /natural|online|neural/i.test(voice.name);
+                      return (
+                        <option key={voice.name} value={voice.name}>
+                          {isNatural ? '✨ [Voz Humana Natural] ' : ''}{voice.name} ({voice.lang})
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}
@@ -1486,12 +1524,15 @@ export const MichiHubScreen: React.FC<MichiHubScreenProps> = ({
                   onChange={(e) => setSelectedVoiceName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 focus:outline-none"
                 >
-                  <option value="">Automática por género ({catGender === 'hembra' ? 'Femenina' : 'Masculina'})</option>
-                  {systemVoices.map((voice) => (
-                    <option key={voice.name} value={voice.name}>
-                      {voice.name} ({voice.lang})
-                    </option>
-                  ))}
+                  <option value="">Automática de alta fidelidad ({catGender === 'hembra' ? 'Femenina' : 'Masculina'})</option>
+                  {systemVoices.map((voice) => {
+                    const isNatural = /natural|online|neural/i.test(voice.name);
+                    return (
+                      <option key={voice.name} value={voice.name}>
+                        {isNatural ? '✨ [Voz Humana Natural] ' : ''}{voice.name} ({voice.lang})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             )}
